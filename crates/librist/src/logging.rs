@@ -178,7 +178,10 @@ impl LoggingSettings {
 impl Drop for LoggingSettings {
     fn drop(&mut self) {
         if !self.settings.is_null() {
+            // Unset global logging first to avoid dangling pointer
+            // (rist_logging_set may have set our settings as global)
             unsafe {
+                librist_sys::rist_logging_unset_global();
                 librist_sys::rist_logging_settings_free2(&mut self.settings);
             }
         }
