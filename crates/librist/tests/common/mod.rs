@@ -5,13 +5,17 @@ use std::time::Duration;
 
 /// Starting port for test allocation.
 /// Using high ports to avoid conflicts with system services.
+/// We start at 30000 and allocate in steps of 10 to avoid conflicts.
+/// RIST uses port pairs (data + RTCP on adjacent ports).
 static PORT: AtomicU16 = AtomicU16::new(30000);
 
 /// Gets a unique port for testing.
 ///
 /// Thread-safe and returns a different port each call.
+/// Allocates in steps of 10 to ensure no port conflicts between
+/// parallel tests (RIST uses adjacent ports for data/RTCP).
 pub fn get_test_port() -> u16 {
-    PORT.fetch_add(1, Ordering::SeqCst)
+    PORT.fetch_add(10, Ordering::SeqCst)
 }
 
 /// Default timeout for test operations.
