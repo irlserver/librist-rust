@@ -3,19 +3,23 @@
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
 
-/// Starting port for test allocation.
-/// Using high ports to avoid conflicts with system services.
-/// We start at 30000 and allocate in steps of 10 to avoid conflicts.
-/// RIST uses port pairs (data + RTCP on adjacent ports).
-static PORT: AtomicU16 = AtomicU16::new(30000);
+/// Port counter within a process.
+static PORT_OFFSET: AtomicU16 = AtomicU16::new(0);
 
 /// Gets a unique port for testing.
 ///
-/// Thread-safe and returns a different port each call.
-/// Allocates in steps of 10 to ensure no port conflicts between
-/// parallel tests (RIST uses adjacent ports for data/RTCP).
+/// Uses the process ID to generate a base port, ensuring different forked
+/// processes use different port ranges. Within a process, allocates sequentially.
+/// 
+/// Port range: 30000-60000, with each process getting a unique starting offset
+/// based on its PID.
 pub fn get_test_port() -> u16 {
-    PORT.fetch_add(10, Ordering::SeqCst)
+    let pid = std::process::id() as u16;
+    // Use PID to create a base offset, wrapping to stay in valid port range
+    // Each test within a process increments by 10 (enough for RIST's port pairs)
+    let base = 30000 + (pid % 3000) * 10;
+    let offset = PORT_OFFSET.fetch_add(10, Ordering::SeqCst);
+    base + offset
 }
 
 /// Default timeout for test operations.
