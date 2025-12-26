@@ -19,7 +19,10 @@ use std::sync::Arc;
 type StatsCallback<T> = Box<dyn Fn(&T) + Send + Sync>;
 type ConnectionCallback = Box<dyn Fn(u32, ConnectionStatus) + Send + Sync>;
 type DataCallback = Box<dyn Fn(DataBlock) + Send + Sync>;
-type AuthCallback = Box<dyn Fn(&str, u16, &str, u16) -> bool + Send + Sync>;
+/// Auth connect callback: (conn_ip, conn_port, local_ip, local_port, peer_id) -> accept
+type AuthConnectCallback = Box<dyn Fn(&str, u16, &str, u16, u32) -> bool + Send + Sync>;
+/// Auth disconnect callback: (peer_id)
+type AuthDisconnectCallback = Box<dyn Fn(u32) + Send + Sync>;
 
 #[derive(Default)]
 struct SenderCallbacks {
@@ -33,8 +36,8 @@ struct ReceiverCallbacks {
     stats: Option<StatsCallback<ReceiverStats>>,
     connection: Option<ConnectionCallback>,
     data: Option<DataCallback>,
-    #[allow(dead_code)]
-    auth: Option<AuthCallback>,
+    auth_connect: Option<AuthConnectCallback>,
+    auth_disconnect: Option<AuthDisconnectCallback>,
 }
 
 
@@ -77,6 +80,8 @@ pub struct RistSender {
     started: AtomicBool,
     peers: Mutex<Vec<PeerHandle>>,
     callbacks: Arc<Mutex<SenderCallbacks>>,
+    /// Number of times we've called Arc::into_raw for callbacks (need to reclaim in Drop)
+    callback_arc_count: std::sync::atomic::AtomicU32,
     #[allow(dead_code)]
     logging: Option<Box<LoggingSettings>>,
 }
@@ -264,6 +269,7 @@ impl RistSender {
     fn setup_stats_callback(&self, interval_ms: u32) -> Result<()> {
         let callbacks = Arc::clone(&self.callbacks);
         let ctx_ptr = Arc::into_raw(callbacks) as *mut c_void;
+        self.callback_arc_count.fetch_add(1, Ordering::SeqCst);
 
         let ret = unsafe {
             librist_sys::rist_stats_callback_set(
@@ -279,6 +285,7 @@ impl RistSender {
     fn setup_connection_callback(&self) -> Result<()> {
         let callbacks = Arc::clone(&self.callbacks);
         let ctx_ptr = Arc::into_raw(callbacks) as *mut c_void;
+        self.callback_arc_count.fetch_add(1, Ordering::SeqCst);
 
         let ret = unsafe {
             librist_sys::rist_connection_status_callback_set(
@@ -294,8 +301,15 @@ impl RistSender {
 impl Drop for RistSender {
     fn drop(&mut self) {
         self.peers.lock().clear();
+        // First destroy the context - this ensures no more callbacks will be called
         unsafe {
             librist_sys::rist_destroy(self.ctx.as_ptr());
+        }
+        // Now reclaim the Arc references we leaked via Arc::into_raw
+        let count = self.callback_arc_count.load(Ordering::SeqCst);
+        for _ in 0..count {
+            // SAFETY: We called Arc::into_raw this many times, so we need to reclaim them
+            let _ = unsafe { Arc::from_raw(Arc::as_ptr(&self.callbacks)) };
         }
     }
 }
@@ -347,6 +361,8 @@ pub struct RistReceiver {
     started: AtomicBool,
     peers: Mutex<Vec<PeerHandle>>,
     callbacks: Arc<Mutex<ReceiverCallbacks>>,
+    /// Number of times we've called Arc::into_raw for callbacks (need to reclaim in Drop)
+    callback_arc_count: std::sync::atomic::AtomicU32,
     #[allow(dead_code)]
     logging: Option<Box<LoggingSettings>>,
 }
@@ -455,6 +471,7 @@ impl RistReceiver {
     fn setup_data_callback(&self) -> Result<()> {
         let callbacks = Arc::clone(&self.callbacks);
         let ctx_ptr = Arc::into_raw(callbacks) as *mut c_void;
+        self.callback_arc_count.fetch_add(1, Ordering::SeqCst);
 
         let ret = unsafe {
             librist_sys::rist_receiver_data_callback_set2(
@@ -469,6 +486,7 @@ impl RistReceiver {
     fn setup_stats_callback(&self, interval_ms: u32) -> Result<()> {
         let callbacks = Arc::clone(&self.callbacks);
         let ctx_ptr = Arc::into_raw(callbacks) as *mut c_void;
+        self.callback_arc_count.fetch_add(1, Ordering::SeqCst);
 
         let ret = unsafe {
             librist_sys::rist_stats_callback_set(
@@ -484,6 +502,7 @@ impl RistReceiver {
     fn setup_connection_callback(&self) -> Result<()> {
         let callbacks = Arc::clone(&self.callbacks);
         let ctx_ptr = Arc::into_raw(callbacks) as *mut c_void;
+        self.callback_arc_count.fetch_add(1, Ordering::SeqCst);
 
         let ret = unsafe {
             librist_sys::rist_connection_status_callback_set(
@@ -494,13 +513,36 @@ impl RistReceiver {
         };
         check_result(ret)
     }
+
+    fn setup_auth_callback(&self) -> Result<()> {
+        let callbacks = Arc::clone(&self.callbacks);
+        let ctx_ptr = Arc::into_raw(callbacks) as *mut c_void;
+        self.callback_arc_count.fetch_add(1, Ordering::SeqCst);
+
+        let ret = unsafe {
+            librist_sys::rist_auth_handler_set(
+                self.ctx.as_ptr(),
+                Some(auth_connect_trampoline),
+                Some(auth_disconnect_trampoline),
+                ctx_ptr,
+            )
+        };
+        check_result(ret)
+    }
 }
 
 impl Drop for RistReceiver {
     fn drop(&mut self) {
         self.peers.lock().clear();
+        // First destroy the context - this ensures no more callbacks will be called
         unsafe {
             librist_sys::rist_destroy(self.ctx.as_ptr());
+        }
+        // Now reclaim the Arc references we leaked via Arc::into_raw
+        let count = self.callback_arc_count.load(Ordering::SeqCst);
+        for _ in 0..count {
+            // SAFETY: We called Arc::into_raw this many times, so we need to reclaim them
+            let _ = unsafe { Arc::from_raw(Arc::as_ptr(&self.callbacks)) };
         }
     }
 }
@@ -612,6 +654,7 @@ impl SenderBuilder {
             started: AtomicBool::new(false),
             peers: Mutex::new(Vec::new()),
             callbacks,
+            callback_arc_count: std::sync::atomic::AtomicU32::new(0),
             logging,
         };
 
@@ -642,6 +685,8 @@ pub struct ReceiverBuilder {
     stats_callback: Option<StatsCallback<ReceiverStats>>,
     connection_callback: Option<ConnectionCallback>,
     data_callback: Option<DataCallback>,
+    auth_connect_callback: Option<AuthConnectCallback>,
+    auth_disconnect_callback: Option<AuthDisconnectCallback>,
 }
 
 impl ReceiverBuilder {
@@ -708,6 +753,57 @@ impl ReceiverBuilder {
         self
     }
 
+    /// Sets a callback for authenticating incoming peer connections.
+    ///
+    /// The callback receives connection information and returns `true` to accept
+    /// the connection or `false` to reject it.
+    ///
+    /// # Arguments
+    ///
+    /// The callback receives:
+    /// - `conn_ip` - The connecting peer's IP address
+    /// - `conn_port` - The connecting peer's port
+    /// - `local_ip` - The local IP address
+    /// - `local_port` - The local port
+    /// - `peer_id` - The peer's unique identifier
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use librist::{RistReceiver, Profile};
+    ///
+    /// let receiver = RistReceiver::builder()
+    ///     .profile(Profile::Main)
+    ///     .on_auth_connect(|conn_ip, conn_port, local_ip, local_port, peer_id| {
+    ///         println!("Connection from {}:{}", conn_ip, conn_port);
+    ///         // Accept all connections
+    ///         true
+    ///     })
+    ///     .build()?;
+    /// # Ok::<(), librist::Error>(())
+    /// ```
+    pub fn on_auth_connect<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(&str, u16, &str, u16, u32) -> bool + Send + Sync + 'static,
+    {
+        self.auth_connect_callback = Some(Box::new(callback));
+        self
+    }
+
+    /// Sets a callback for peer disconnection events.
+    ///
+    /// # Arguments
+    ///
+    /// The callback receives:
+    /// - `peer_id` - The peer's unique identifier
+    pub fn on_auth_disconnect<F>(mut self, callback: F) -> Self
+    where
+        F: Fn(u32) + Send + Sync + 'static,
+    {
+        self.auth_disconnect_callback = Some(Box::new(callback));
+        self
+    }
+
     /// Builds the receiver.
     pub fn build(self) -> Result<RistReceiver> {
         // Create logging settings
@@ -740,7 +836,8 @@ impl ReceiverBuilder {
             stats: self.stats_callback,
             connection: self.connection_callback,
             data: self.data_callback,
-            auth: None,
+            auth_connect: self.auth_connect_callback,
+            auth_disconnect: self.auth_disconnect_callback,
         }));
 
         let receiver = RistReceiver {
@@ -748,6 +845,7 @@ impl ReceiverBuilder {
             started: AtomicBool::new(false),
             peers: Mutex::new(Vec::new()),
             callbacks,
+            callback_arc_count: std::sync::atomic::AtomicU32::new(0),
             logging,
         };
 
@@ -770,6 +868,15 @@ impl ReceiverBuilder {
 
         if receiver.callbacks.lock().connection.is_some() {
             receiver.setup_connection_callback()?;
+        }
+
+        // Set up auth callbacks if either is provided
+        {
+            let guard = receiver.callbacks.lock();
+            if guard.auth_connect.is_some() || guard.auth_disconnect.is_some() {
+                drop(guard);
+                receiver.setup_auth_callback()?;
+            }
         }
 
         Ok(receiver)
@@ -905,9 +1012,92 @@ unsafe extern "C" fn connection_trampoline(
     });
 }
 
+unsafe extern "C" fn auth_connect_trampoline(
+    arg: *mut c_void,
+    conn_ip: *const std::os::raw::c_char,
+    conn_port: u16,
+    local_ip: *const std::os::raw::c_char,
+    local_port: u16,
+    peer: *mut librist_sys::rist_peer,
+) -> c_int {
+    if arg.is_null() {
+        return 0; // Accept by default
+    }
+
+    let result = std::panic::catch_unwind(|| {
+        // SAFETY: arg is a pointer we passed via Arc::into_raw
+        let callbacks = unsafe { Arc::from_raw(arg as *const Mutex<ReceiverCallbacks>) };
+        let callbacks_ref = Arc::clone(&callbacks);
+        let _ = Arc::into_raw(callbacks); // Don't drop, just release our reference
+
+        let guard = callbacks_ref.lock();
+        if let Some(ref callback) = guard.auth_connect {
+            // SAFETY: librist guarantees these are valid C strings
+            let conn_ip_str = if conn_ip.is_null() {
+                ""
+            } else {
+                unsafe { std::ffi::CStr::from_ptr(conn_ip) }
+                    .to_str()
+                    .unwrap_or("")
+            };
+            let local_ip_str = if local_ip.is_null() {
+                ""
+            } else {
+                unsafe { std::ffi::CStr::from_ptr(local_ip) }
+                    .to_str()
+                    .unwrap_or("")
+            };
+            let peer_id = if peer.is_null() {
+                0
+            } else {
+                unsafe { librist_sys::rist_peer_get_id(peer) }
+            };
+
+            if callback(conn_ip_str, conn_port, local_ip_str, local_port, peer_id) {
+                0 // Accept
+            } else {
+                -1 // Reject
+            }
+        } else {
+            0 // Accept by default if no callback
+        }
+    });
+
+    result.unwrap_or(0)
+}
+
+unsafe extern "C" fn auth_disconnect_trampoline(
+    arg: *mut c_void,
+    peer: *mut librist_sys::rist_peer,
+) -> c_int {
+    if arg.is_null() {
+        return 0;
+    }
+
+    let _ = std::panic::catch_unwind(|| {
+        // SAFETY: arg is a pointer we passed via Arc::into_raw
+        let callbacks = unsafe { Arc::from_raw(arg as *const Mutex<ReceiverCallbacks>) };
+        let callbacks_ref = Arc::clone(&callbacks);
+        let _ = Arc::into_raw(callbacks);
+
+        let guard = callbacks_ref.lock();
+        if let Some(ref callback) = guard.auth_disconnect {
+            let peer_id = if peer.is_null() {
+                0
+            } else {
+                unsafe { librist_sys::rist_peer_get_id(peer) }
+            };
+            callback(peer_id);
+        }
+    });
+
+    0
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
     #[test]
     fn test_sender_builder() {
@@ -924,5 +1114,118 @@ mod tests {
             .profile(Profile::Main)
             .nack_type(NackType::Range)
             .fifo_size(1024);
+    }
+
+    #[test]
+    fn test_receiver_builder_with_auth_callbacks() {
+        // Test that auth callbacks can be set on the builder
+        let auth_called = Arc::new(AtomicBool::new(false));
+        let disconnect_called = Arc::new(AtomicBool::new(false));
+
+        let auth_called_clone = Arc::clone(&auth_called);
+        let disconnect_called_clone = Arc::clone(&disconnect_called);
+
+        let _builder = ReceiverBuilder::default()
+            .profile(Profile::Main)
+            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+                auth_called_clone.store(true, Ordering::SeqCst);
+                true // Accept connection
+            })
+            .on_auth_disconnect(move |_peer_id| {
+                disconnect_called_clone.store(true, Ordering::SeqCst);
+            });
+
+        // Callbacks haven't been called yet (just configured)
+        assert!(!auth_called.load(Ordering::SeqCst));
+        assert!(!disconnect_called.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn test_receiver_with_auth_accept_all() {
+        // Test building a receiver with auth callback that accepts all connections
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer_id| {
+                println!(
+                    "Auth request from {}:{} (peer_id={})",
+                    conn_ip, conn_port, peer_id
+                );
+                true // Accept all
+            })
+            .build();
+
+        assert!(receiver.is_ok());
+    }
+
+    #[test]
+    fn test_receiver_with_auth_reject_all() {
+        // Test building a receiver with auth callback that rejects all connections
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .on_auth_connect(|_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+                false // Reject all
+            })
+            .build();
+
+        assert!(receiver.is_ok());
+    }
+
+    #[test]
+    fn test_receiver_with_auth_ip_filter() {
+        // Test building a receiver with auth callback that filters by IP
+        let allowed_ips = vec!["127.0.0.1".to_string(), "192.168.1.100".to_string()];
+
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .on_auth_connect(move |conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+                allowed_ips.contains(&conn_ip.to_string())
+            })
+            .build();
+
+        assert!(receiver.is_ok());
+    }
+
+    #[test]
+    fn test_receiver_with_disconnect_tracking() {
+        // Test building a receiver with disconnect callback for tracking
+        let disconnect_count = Arc::new(AtomicU32::new(0));
+        let count_clone = Arc::clone(&disconnect_count);
+
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .on_auth_disconnect(move |peer_id| {
+                println!("Peer {} disconnected", peer_id);
+                count_clone.fetch_add(1, Ordering::SeqCst);
+            })
+            .build();
+
+        assert!(receiver.is_ok());
+        // No disconnects yet
+        assert_eq!(disconnect_count.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn test_receiver_with_both_auth_callbacks() {
+        // Test building a receiver with both connect and disconnect callbacks
+        let connect_count = Arc::new(AtomicU32::new(0));
+        let disconnect_count = Arc::new(AtomicU32::new(0));
+        let connect_clone = Arc::clone(&connect_count);
+        let disconnect_clone = Arc::clone(&disconnect_count);
+
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+                connect_clone.fetch_add(1, Ordering::SeqCst);
+                true
+            })
+            .on_auth_disconnect(move |_peer_id| {
+                disconnect_clone.fetch_add(1, Ordering::SeqCst);
+            })
+            .build();
+
+        assert!(receiver.is_ok());
+        // No connections yet
+        assert_eq!(connect_count.load(Ordering::SeqCst), 0);
+        assert_eq!(disconnect_count.load(Ordering::SeqCst), 0);
     }
 }
