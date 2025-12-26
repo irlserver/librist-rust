@@ -293,7 +293,12 @@ impl RistSender {
     }
 
     /// Returns raw context pointer (for advanced use).
-    pub(crate) fn ctx_ptr(&self) -> *mut librist_sys::rist_ctx {
+    ///
+    /// # Safety
+    ///
+    /// This is exposed for advanced users who need direct access to the
+    /// underlying librist context. Use with caution.
+    pub fn raw_ctx(&self) -> *mut librist_sys::rist_ctx {
         self.ctx.as_ptr()
     }
 
