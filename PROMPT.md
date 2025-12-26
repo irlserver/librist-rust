@@ -16,5 +16,3 @@ Inspiration can be found in inspiration/ folder:
 - rist-bonding - A unified workspace for bonding-aware RIST streaming: patched GStreamer C plugins, Rust GStreamer elements, and reproducible network simulation tooling designed for low-latency, failure-resilient delivery.
 
 Start planning it out, write plans to plans/. When in doubt always look at librist, for extra help and suggestions for implementations check the other inspirations.
-
-Everything
