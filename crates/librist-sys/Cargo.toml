@@ -1,0 +1,36 @@
+[package]
+name = "librist-sys"
+description = "Raw FFI bindings to the librist C library for RIST protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+links = "rist"
+build = "build.rs"
+
+[features]
+default = ["bundled"]
+# Build librist from source (default)
+bundled = []
+# Use system-installed librist
+system = []
+# Static linking (default on macOS)
+static = []
+# Enable mbedTLS for encryption
+mbedtls = []
+# Enable SRP authentication support  
+srp = []
+
+[dependencies]
+libc = "0.2"
+
+[build-dependencies]
+bindgen = { workspace = true }
+pkg-config = { workspace = true }
+cc = { workspace = true }
+
+[package.metadata.docs.rs]
+features = ["bundled"]

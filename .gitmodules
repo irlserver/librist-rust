@@ -1,0 +1,4 @@
+[submodule "crates/librist-sys/librist"]
+	path = crates/librist-sys/librist
+	url = https://github.com/irlserver/librist.git
+	branch = irlserver
