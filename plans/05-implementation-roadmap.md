@@ -115,7 +115,7 @@ This document outlines the phased implementation plan for the librist-rust proje
 - [x] Data callback
 - [x] Stats callback
 - [x] Connection status callback
-- [ ] Auth callback
+- [x] Auth callback (connect and disconnect)
 
 ### 4.4 Logging
 - [x] Log callback
@@ -179,9 +179,9 @@ This document outlines the phased implementation plan for the librist-rust proje
 ### 7.2 Examples
 - [x] Simple sender example
 - [x] Simple receiver example
-- [ ] Bonding example
+- [x] Bonding example
 - [ ] Async example
-- [ ] Stats monitoring example
+- [x] Stats monitoring example
 
 ### 7.3 Testing
 - [x] Unit tests (28 passing)
