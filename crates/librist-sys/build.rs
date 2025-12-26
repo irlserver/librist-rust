@@ -240,6 +240,14 @@ fn generate_bindings(include_path: &Path, out_dir: &Path) {
         .derive_eq(true)
         .derive_hash(true)
         .derive_partialeq(true)
+        // Don't derive Eq/Hash/PartialEq for types with function pointers
+        // (comparing function pointers is meaningless and triggers warnings)
+        .no_partialeq("__sFILE")
+        .no_hash("__sFILE")
+        .no_partialeq("rist_logging_settings")
+        .no_hash("rist_logging_settings")
+        .no_partialeq("rist_thread_callback_t")
+        .no_hash("rist_thread_callback_t")
         // Function allowlist
         .allowlist_function("rist_.*")
         .allowlist_function("librist_.*")
