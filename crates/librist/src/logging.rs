@@ -4,6 +4,9 @@ use std::ffi::CStr;
 use std::os::raw::{c_char, c_int, c_void};
 use std::ptr;
 
+/// Type alias for log callback closures.
+type LogCallbackFn = Box<dyn Fn(LogLevel, &str) + Send + Sync>;
+
 /// Log level for RIST operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 #[repr(i32)]
@@ -115,7 +118,7 @@ impl LoggingSettings {
         F: Fn(LogLevel, &str) + Send + Sync + 'static,
     {
         // Box the callback and then box the trait object to get a thin pointer
-        let callback: Box<dyn Fn(LogLevel, &str) + Send + Sync> = Box::new(callback);
+        let callback: LogCallbackFn = Box::new(callback);
         let callback = Box::new(callback);
         // Get a raw pointer to the Box (thin pointer, properly aligned)
         let callback_ptr = Box::into_raw(callback);

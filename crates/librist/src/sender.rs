@@ -2,7 +2,7 @@
 
 use crate::callbacks::{
     sender_connection_trampoline, sender_oob_trampoline, sender_stats_trampoline,
-    OobCallback, SenderCallbacks,
+    ConnectionCallback, LogCallback, OobCallback, SenderCallbacks, StatsCallback,
 };
 use crate::data::DataBlockBuilder;
 use crate::error::{check_result, Error, Result};
@@ -385,10 +385,10 @@ pub struct SenderBuilder {
     profile: Profile,
     flow_id: Option<u32>,
     log_level: LogLevel,
-    log_callback: Option<Box<dyn Fn(LogLevel, &str) + Send + Sync>>,
+    log_callback: Option<LogCallback>,
     stats_interval_ms: Option<u32>,
-    stats_callback: Option<Box<dyn Fn(&SenderStats) + Send + Sync>>,
-    connection_callback: Option<Box<dyn Fn(u32, ConnectionStatus) + Send + Sync>>,
+    stats_callback: Option<StatsCallback<SenderStats>>,
+    connection_callback: Option<ConnectionCallback>,
     oob_callback: Option<OobCallback>,
     enable_oob: bool,
 }

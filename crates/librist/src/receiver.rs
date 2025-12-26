@@ -3,7 +3,8 @@
 use crate::callbacks::{
     auth_connect_trampoline, auth_disconnect_trampoline, receiver_connection_trampoline,
     receiver_data_trampoline, receiver_oob_trampoline, receiver_stats_trampoline,
-    AuthConnectCallback, AuthDisconnectCallback, DataCallback, OobCallback, ReceiverCallbacks,
+    AuthConnectCallback, AuthDisconnectCallback, ConnectionCallback, DataCallback, LogCallback,
+    OobCallback, ReceiverCallbacks, StatsCallback,
 };
 use crate::data::DataBlock;
 use crate::error::{check_result, Error, Result};
@@ -344,12 +345,12 @@ unsafe impl Sync for RistReceiver {}
 pub struct ReceiverBuilder {
     profile: Profile,
     log_level: LogLevel,
-    log_callback: Option<Box<dyn Fn(LogLevel, &str) + Send + Sync>>,
+    log_callback: Option<LogCallback>,
     nack_type: NackType,
     fifo_size: Option<u32>,
     stats_interval_ms: Option<u32>,
-    stats_callback: Option<Box<dyn Fn(&ReceiverStats) + Send + Sync>>,
-    connection_callback: Option<Box<dyn Fn(u32, ConnectionStatus) + Send + Sync>>,
+    stats_callback: Option<StatsCallback<ReceiverStats>>,
+    connection_callback: Option<ConnectionCallback>,
     data_callback: Option<DataCallback>,
     auth_connect_callback: Option<AuthConnectCallback>,
     auth_disconnect_callback: Option<AuthDisconnectCallback>,

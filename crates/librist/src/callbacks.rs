@@ -15,6 +15,9 @@ use std::sync::Arc;
 // Callback Type Aliases
 // ============================================================================
 
+/// Log callback: (level, message).
+pub(crate) type LogCallback = Box<dyn Fn(crate::LogLevel, &str) + Send + Sync>;
+
 /// Stats callback for sender statistics.
 pub(crate) type StatsCallback<T> = Box<dyn Fn(&T) + Send + Sync>;
 
