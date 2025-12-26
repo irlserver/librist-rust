@@ -5,11 +5,16 @@ We should also have a full CI pipeline.
 
 In the future i want to use this to create both servers and clients using the Rist Protocol.
 
+You should create a workspace in crates/.
+
 Inspiration can be found in inspiration/ folder:
 
 - librist - the full librist C library with my custom modifications. THIS IS YOUR SOURCE OF TRUTH
 - rist-swift-wrapper - incomplete swift-wrapper used by Moblin app. Could be very useful.
 - moblin - iOS app written in swift that uses the rist-swift-wrapper. Has both a RistServer and RistClient
 - stream-relay - some random code i found, might be useful, has some librist stuff in Rust
+- rist-bonding - A unified workspace for bonding-aware RIST streaming: patched GStreamer C plugins, Rust GStreamer elements, and reproducible network simulation tooling designed for low-latency, failure-resilient delivery.
 
 Start planning it out, write plans to plans/. When in doubt always look at librist, for extra help and suggestions for implementations check the other inspirations.
+
+Everything
