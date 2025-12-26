@@ -346,6 +346,8 @@ pub struct ReceiverBuilder {
     profile: Profile,
     log_level: LogLevel,
     log_callback: Option<LogCallback>,
+    #[cfg(feature = "tracing")]
+    use_tracing: bool,
     nack_type: NackType,
     fifo_size: Option<u32>,
     stats_interval_ms: Option<u32>,
@@ -376,6 +378,28 @@ impl ReceiverBuilder {
         F: Fn(LogLevel, &str) + Send + Sync + 'static,
     {
         self.log_callback = Some(Box::new(callback));
+        self
+    }
+
+    /// Enables logging via the `tracing` crate instead of `log`.
+    ///
+    /// This is only available when the `tracing` feature is enabled.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use librist::{RistReceiver, Profile, LogLevel};
+    ///
+    /// let receiver = RistReceiver::builder()
+    ///     .profile(Profile::Main)
+    ///     .log_level(LogLevel::Debug)
+    ///     .use_tracing()
+    ///     .build()?;
+    /// # Ok::<(), librist::Error>(())
+    /// ```
+    #[cfg(feature = "tracing")]
+    pub fn use_tracing(mut self) -> Self {
+        self.use_tracing = true;
         self
     }
 
@@ -501,6 +525,21 @@ impl ReceiverBuilder {
     /// Builds the receiver.
     pub fn build(self) -> Result<RistReceiver> {
         // Create logging settings
+        #[cfg(feature = "tracing")]
+        let logging = if let Some(callback) = self.log_callback {
+            Some(Box::new(LoggingSettings::with_callback(
+                self.log_level,
+                callback,
+            )?))
+        } else if self.use_tracing && self.log_level != LogLevel::Disable {
+            Some(Box::new(LoggingSettings::with_tracing(self.log_level)?))
+        } else if self.log_level != LogLevel::Disable {
+            Some(Box::new(LoggingSettings::with_log_crate(self.log_level)?))
+        } else {
+            None
+        };
+
+        #[cfg(not(feature = "tracing"))]
         let logging = if let Some(callback) = self.log_callback {
             Some(Box::new(LoggingSettings::with_callback(
                 self.log_level,

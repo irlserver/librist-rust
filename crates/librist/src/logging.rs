@@ -68,6 +68,21 @@ impl LogLevel {
             LogLevel::Debug | LogLevel::Simulate => Some(log::Level::Debug),
         }
     }
+
+    /// Converts to the corresponding `tracing` crate level.
+    ///
+    /// Only available when the `tracing` feature is enabled.
+    #[cfg(feature = "tracing")]
+    pub fn to_tracing_level(self) -> Option<tracing::Level> {
+        match self {
+            LogLevel::Disable => None,
+            LogLevel::Error => Some(tracing::Level::ERROR),
+            LogLevel::Warn => Some(tracing::Level::WARN),
+            LogLevel::Notice | LogLevel::Info => Some(tracing::Level::INFO),
+            LogLevel::Debug => Some(tracing::Level::DEBUG),
+            LogLevel::Simulate => Some(tracing::Level::TRACE),
+        }
+    }
 }
 
 /// Logging settings for a RIST context.
@@ -164,6 +179,33 @@ impl LoggingSettings {
                 LogLevel::Info => log::info!(target: "librist", "{}", msg),
                 LogLevel::Debug => log::debug!(target: "librist", "{}", msg),
                 LogLevel::Simulate => log::trace!(target: "librist", "{}", msg),
+            }
+        })
+    }
+
+    /// Creates logging settings that forward to the `tracing` crate.
+    ///
+    /// This is only available when the `tracing` feature is enabled.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use librist::{LoggingSettings, LogLevel};
+    ///
+    /// let logging = LoggingSettings::with_tracing(LogLevel::Debug)?;
+    /// # Ok::<(), librist::Error>(())
+    /// ```
+    #[cfg(feature = "tracing")]
+    pub fn with_tracing(level: LogLevel) -> crate::Result<Self> {
+        Self::with_callback(level, |log_level, msg| {
+            match log_level {
+                LogLevel::Disable => {}
+                LogLevel::Error => tracing::error!(target: "librist", "{}", msg),
+                LogLevel::Warn => tracing::warn!(target: "librist", "{}", msg),
+                LogLevel::Notice => tracing::info!(target: "librist", "{}", msg),
+                LogLevel::Info => tracing::info!(target: "librist", "{}", msg),
+                LogLevel::Debug => tracing::debug!(target: "librist", "{}", msg),
+                LogLevel::Simulate => tracing::trace!(target: "librist", "{}", msg),
             }
         })
     }
