@@ -57,6 +57,14 @@ pub enum Error {
     #[error("Failed to create context")]
     ContextCreationFailed,
 
+    /// Out-of-band data is not enabled.
+    #[error("OOB not enabled - call enable_oob() or on_oob() first")]
+    OobNotEnabled,
+
+    /// Operation not supported with this RIST profile.
+    #[error("Operation not supported with this profile")]
+    ProfileNotSupported,
+
     /// An unspecified librist error occurred.
     #[error("librist error code: {0}")]
     Rist(i32),

@@ -1,0 +1,69 @@
+//! Common test utilities and helpers.
+
+use std::sync::atomic::{AtomicU16, Ordering};
+use std::time::Duration;
+
+/// Starting port for test allocation.
+/// Using high ports to avoid conflicts with system services.
+static PORT: AtomicU16 = AtomicU16::new(30000);
+
+/// Gets a unique port for testing.
+///
+/// Thread-safe and returns a different port each call.
+pub fn get_test_port() -> u16 {
+    PORT.fetch_add(1, Ordering::SeqCst)
+}
+
+/// Default timeout for test operations.
+pub const DEFAULT_TIMEOUT_MS: i32 = 5000;
+
+/// Short timeout for quick checks.
+pub const SHORT_TIMEOUT_MS: i32 = 100;
+
+/// Waits for a condition with timeout.
+pub fn wait_for<F>(condition: F, timeout: Duration) -> bool
+where
+    F: Fn() -> bool,
+{
+    let start = std::time::Instant::now();
+    while start.elapsed() < timeout {
+        if condition() {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    false
+}
+
+/// Generates test data patterns.
+pub fn generate_test_data(size: usize, pattern: u8) -> Vec<u8> {
+    vec![pattern; size]
+}
+
+/// Generates MPEG-TS-like test packets (188 bytes with sync byte).
+pub fn generate_mpeg_ts_packet(seq: u64) -> Vec<u8> {
+    let mut packet = vec![0u8; 188];
+    packet[0] = 0x47; // Sync byte
+    packet[1] = 0x1F;
+    packet[2] = 0xFF;
+    packet[3] = 0x10;
+    // Embed sequence number
+    packet[4..12].copy_from_slice(&seq.to_be_bytes());
+    packet
+}
+
+/// Generates multiple MPEG-TS packets bundled together (7 packets = 1316 bytes).
+pub fn generate_mpeg_ts_bundle(seq: u64) -> Vec<u8> {
+    let mut bundle = Vec::with_capacity(1316);
+    for i in 0..7 {
+        let mut packet = vec![0u8; 188];
+        packet[0] = 0x47;
+        packet[1] = 0x1F;
+        packet[2] = 0xFF;
+        packet[3] = 0x10;
+        let sub_seq = seq * 7 + i;
+        packet[4..12].copy_from_slice(&sub_seq.to_be_bytes());
+        bundle.extend_from_slice(&packet);
+    }
+    bundle
+}

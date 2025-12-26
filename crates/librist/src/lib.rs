@@ -11,6 +11,7 @@
 //! - **Callback support** with Rust closures
 //! - **Async support** (optional, via `async-tokio` feature)
 //! - **Thread-safe** sender and receiver contexts
+//! - **Out-of-band data** support for low-latency signaling
 //!
 //! # Quick Start
 //!
@@ -92,23 +93,34 @@
 //! - `weight=<n>` - Bonding weight (0 = duplicate to all)
 //! - `cname=<name>` - RTCP canonical name
 
-mod context;
+mod callbacks;
 mod data;
 mod error;
 mod logging;
+mod oob;
 mod peer;
+mod receiver;
+mod sender;
 mod stats;
 mod types;
 
+#[cfg(feature = "async-tokio")]
+mod async_context;
+
 // Re-export public API
-pub use context::{RistReceiver, RistSender};
-pub use context::{ReceiverBuilder, SenderBuilder};
 pub use data::DataBlock;
 pub use error::{Error, Result};
 pub use logging::{LogLevel, LoggingSettings};
+pub use oob::{OobBlock, OobBlockBuilder, MAX_OOB_PAYLOAD_SIZE};
 pub use peer::{PeerConfig, PeerHandle};
+pub use receiver::{ReceiverBuilder, RistReceiver};
+pub use sender::{RistSender, SenderBuilder};
 pub use stats::{ReceiverPeerStats, ReceiverStats, SenderStats};
 pub use types::*;
+
+// Async exports
+#[cfg(feature = "async-tokio")]
+pub use async_context::{AsyncRistReceiver, AsyncRistSender};
 
 /// Returns the librist library version string.
 pub fn version() -> &'static str {

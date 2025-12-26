@@ -27,6 +27,7 @@ bitflags = "2.4"
 
 # Optional async runtimes
 tokio = { version = "1.43", features = ["rt", "sync", "time"] }
+futures-core = "0.3"
 
 # Build dependencies
 bindgen = "0.71"
