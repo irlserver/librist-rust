@@ -28,7 +28,7 @@ fn main() -> librist::Result<()> {
     let total_bytes = Arc::new(AtomicU64::new(0));
     let total_packets = Arc::new(AtomicU64::new(0));
 
-    // Create a receiver with stats callback
+    // Create a receiver with stats and auth callbacks
     let receiver = RistReceiver::builder()
         .profile(Profile::Main)
         .log_level(LogLevel::Info)
@@ -44,6 +44,17 @@ fn main() -> librist::Result<()> {
         })
         .on_connection(|peer_id, status| {
             println!("Connection status: peer={}, status={:?}", peer_id, status);
+        })
+        .on_auth_connect(|conn_ip, conn_port, local_ip, local_port, peer_id| {
+            println!(
+                "Auth: incoming connection from {}:{} to {}:{} (peer_id={})",
+                conn_ip, conn_port, local_ip, local_port, peer_id
+            );
+            // Accept all connections - return false to reject
+            true
+        })
+        .on_auth_disconnect(|peer_id| {
+            println!("Auth: peer {} disconnected", peer_id);
         })
         .build()?;
 
