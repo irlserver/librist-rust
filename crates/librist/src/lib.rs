@@ -101,12 +101,14 @@ mod oob;
 mod peer;
 mod receiver;
 mod sender;
-mod srp;
 mod stats;
 mod types;
 
 #[cfg(feature = "async-tokio")]
 mod async_context;
+
+#[cfg(feature = "srp")]
+mod srp;
 
 // Re-export public API
 pub use data::DataBlock;
@@ -116,9 +118,11 @@ pub use oob::{OobBlock, OobBlockBuilder, MAX_OOB_PAYLOAD_SIZE};
 pub use peer::{PeerConfig, PeerHandle};
 pub use receiver::{ReceiverBuilder, RistReceiver};
 pub use sender::{RistSender, SenderBuilder};
-pub use srp::{SrpCredentials, SrpVerifier};
 pub use stats::{ReceiverPeerStats, ReceiverStats, SenderStats};
 pub use types::*;
+
+#[cfg(feature = "srp")]
+pub use srp::{SrpCredentials, SrpVerifier};
 
 // Async exports
 #[cfg(feature = "async-tokio")]

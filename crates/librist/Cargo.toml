@@ -17,6 +17,8 @@ async-tokio = ["dep:tokio", "dep:futures-core"]
 serde = ["dep:serde"]
 # Enable tracing integration
 tracing = ["dep:tracing"]
+# Enable SRP authentication (requires mbedtls in librist-sys)
+srp = ["librist-sys/srp"]
 
 [dependencies]
 librist-sys = { workspace = true }

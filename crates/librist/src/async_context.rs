@@ -7,7 +7,6 @@
 //!
 //! ```no_run
 //! use librist::{AsyncRistReceiver, AsyncRistSender, Profile, RistReceiver, RistSender};
-//! use futures_util::StreamExt;
 //!
 //! #[tokio::main]
 //! async fn main() -> librist::Result<()> {
@@ -27,8 +26,8 @@
 //!     receiver.start()?;
 //!     let mut async_receiver = AsyncRistReceiver::new(receiver, 1024);
 //!
-//!     // Use as async stream
-//!     while let Some(block) = async_receiver.next().await {
+//!     // Receive using the async method
+//!     while let Some(block) = async_receiver.recv().await {
 //!         println!("Received {} bytes", block.payload().len());
 //!         async_sender.send(block.payload()).await?;
 //!     }

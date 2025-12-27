@@ -12,7 +12,7 @@ links = "rist"
 build = "build.rs"
 
 [features]
-default = ["bundled"]
+default = ["bundled", "mbedtls"]
 # Build librist from source (default)
 bundled = []
 # Use system-installed librist
@@ -21,8 +21,8 @@ system = []
 static = []
 # Enable mbedTLS for encryption
 mbedtls = []
-# Enable SRP authentication support  
-srp = []
+# Enable SRP authentication (requires mbedtls)
+srp = ["mbedtls"]
 
 [dependencies]
 libc = "0.2"

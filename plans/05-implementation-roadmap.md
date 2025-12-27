@@ -2,7 +2,7 @@
 
 ## Current Status (December 2024)
 
-**Overall Progress: ~95% complete**
+**Overall Progress: ~98% complete**
 
 | Phase | Status | Notes |
 |-------|--------|-------|
@@ -10,11 +10,11 @@
 | 2. Core Wrapper | **Complete** | Sender/Receiver with builders |
 | 3. Data Flow | **Complete** | DataBlock, send/recv, NPD, NACK |
 | 4. Callbacks | **Complete** | Stats, connection, data, auth, OOB, logging |
-| 5. Advanced | **Complete** | Stats, OOB, encryption, bonding |
+| 5. Advanced | **Complete** | Stats, OOB, encryption, bonding, SRP |
 | 6. Async | **Complete** | Tokio integration |
 | 7. Polish | **Partial** | Needs Windows CI, more tests |
 
-**Test Suite:** 23 tests passing (19 librist, 4 librist-sys)
+**Test Suite:** 53 tests passing (34 librist unit, 19 integration, 4 librist-sys)
 
 **Examples:** sender, receiver, bonding_sender, stats_monitor, async_receiver, debug_recv
 
@@ -30,11 +30,6 @@
 ### Medium Priority
 - [ ] Benchmark suite
 - [ ] Test coverage improvements
-- [ ] OOB peer targeting (TODO in code)
-
-### Low Priority
-- [ ] SRP authentication
-- [ ] async-std support
 
 ---
 
@@ -62,10 +57,12 @@
 - Log callback with `log` and `tracing` crate integration
 
 ### Advanced
-- OOB send/receive: send_oob(), send_oob_block(), on_oob()
+- OOB send/receive: send_oob(), send_oob_to_peer(), send_oob_block(), on_oob()
+- OOB peer targeting for directed messaging
 - Encryption via URL parameters
 - Bonding via weight configuration
 - Statistics: SenderStats, ReceiverStats
+- SRP authentication: SrpCredentials, SrpVerifier, enable_srp_auth(), enable_srp_verifier()
 
 ### Async (feature: async-tokio)
 - AsyncRistSender: send(), send_to_port(), send_bulk()
@@ -87,4 +84,13 @@ Before v1.0 release:
 
 **Required:** Rust 1.85+, Meson 0.54+, Ninja, C compiler
 
-**Optional:** mbedTLS (bundled), OpenSSL, lz4
+## Features
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `bundled` | Yes | Build librist from source |
+| `mbedtls` | Yes | AES encryption support |
+| `srp` | No | SRP authentication (enables mbedtls) |
+| `async-tokio` | No | Async support via Tokio |
+| `tracing` | No | Tracing crate integration |
+| `serde` | No | Serialization support |

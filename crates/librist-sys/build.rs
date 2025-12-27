@@ -87,10 +87,14 @@ fn build_librist(
     meson_args.push("-Dbuiltin_cjson=true".to_string());
     meson_args.push("-Dfallback_builtin=true".to_string());
     
-    // Enable mbedtls by default for encryption and SRP support
-    // mbedtls provides: AES encryption, SRP authentication
-    meson_args.push("-Duse_mbedtls=true".to_string());
-    meson_args.push("-Dbuiltin_mbedtls=true".to_string());
+    // mbedTLS provides AES encryption and SRP authentication
+    // Enabled by default, can be disabled with default-features = false
+    if cfg!(feature = "mbedtls") {
+        meson_args.push("-Duse_mbedtls=true".to_string());
+        meson_args.push("-Dbuiltin_mbedtls=true".to_string());
+    } else {
+        meson_args.push("-Duse_mbedtls=false".to_string());
+    }
 
     // Run meson setup
     run_command_vec("meson", &meson_args, &librist_src, "meson setup");
@@ -197,12 +201,9 @@ fn configure_linking(lib_path: &Path, target_os: &str, use_static: bool) {
         }
     }
 
-    // Link mbedTLS if enabled
-    if cfg!(feature = "mbedtls") {
-        println!("cargo:rustc-link-lib=mbedtls");
-        println!("cargo:rustc-link-lib=mbedcrypto");
-        println!("cargo:rustc-link-lib=mbedx509");
-    }
+    // Note: When using builtin_mbedtls=true (which we do), mbedtls is statically
+    // linked into librist, so we don't need to link it separately.
+    // Only link mbedtls separately if using system mbedtls.
 }
 
 /// Generate Rust bindings using bindgen
