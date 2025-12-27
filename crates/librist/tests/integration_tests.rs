@@ -336,7 +336,7 @@ rusty_fork_test! {
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
             .log_level(LogLevel::Disable)
-            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer| {
                 auth_called_clone.store(true, Ordering::SeqCst);
                 true
             })

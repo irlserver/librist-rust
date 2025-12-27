@@ -12,7 +12,7 @@
 //! - Quality percentage
 //! - RTT (Round Trip Time)
 
-use librist::{LogLevel, Profile, ReceiverStats, RistReceiver};
+use librist::{LogLevel, PeerInfo, Profile, ReceiverStats, RistReceiver};
 use std::env;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -108,15 +108,15 @@ fn main() -> librist::Result<()> {
                 peer_id, status
             );
         })
-        .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer_id| {
-            println!(
-                ">>> New connection from {}:{} (peer_id={})",
-                conn_ip, conn_port, peer_id
-            );
+        .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer: &PeerInfo| {
+            println!(">>> New connection from {}:{} ({})", conn_ip, conn_port, peer);
+            if let Some(ref cname) = peer.cname {
+                println!("    CNAME: {}", cname);
+            }
             true // Accept all connections
         })
-        .on_auth_disconnect(|peer_id| {
-            println!(">>> Peer {} disconnected", peer_id);
+        .on_auth_disconnect(|peer: &PeerInfo| {
+            println!(">>> {} disconnected", peer);
         })
         .build()?;
 

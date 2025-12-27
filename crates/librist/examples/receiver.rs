@@ -7,7 +7,7 @@
 //!
 //! The receiver will listen on the specified port and print received data stats.
 
-use librist::{LogLevel, Profile, ReceiverStats, RistReceiver};
+use librist::{LogLevel, PeerInfo, Profile, ReceiverStats, RistReceiver};
 use std::env;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -45,16 +45,20 @@ fn main() -> librist::Result<()> {
         .on_connection(|peer_id, status| {
             println!("Connection status: peer={}, status={:?}", peer_id, status);
         })
-        .on_auth_connect(|conn_ip, conn_port, local_ip, local_port, peer_id| {
+        .on_auth_connect(|conn_ip, conn_port, local_ip, local_port, peer: &PeerInfo| {
             println!(
-                "Auth: incoming connection from {}:{} to {}:{} (peer_id={})",
-                conn_ip, conn_port, local_ip, local_port, peer_id
+                "Auth: incoming connection from {}:{} to {}:{} ({})",
+                conn_ip, conn_port, local_ip, local_port, peer
             );
+            // Log CNAME if available (user-configurable identifier)
+            if let Some(ref cname) = peer.cname {
+                println!("  CNAME: {}", cname);
+            }
             // Accept all connections - return false to reject
             true
         })
-        .on_auth_disconnect(|peer_id| {
-            println!("Auth: peer {} disconnected", peer_id);
+        .on_auth_disconnect(|peer: &PeerInfo| {
+            println!("Auth: {} disconnected", peer);
         })
         .build()?;
 
