@@ -3,3 +3,4 @@
 
 #include <librist/librist.h>
 #include <librist/udpsocket.h>
+#include <librist/librist_srp.h>

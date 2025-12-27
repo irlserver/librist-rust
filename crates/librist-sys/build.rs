@@ -87,12 +87,10 @@ fn build_librist(
     meson_args.push("-Dbuiltin_cjson=true".to_string());
     meson_args.push("-Dfallback_builtin=true".to_string());
     
-    // Note: mbedtls is enabled by default in librist, disable if not wanted
-    if !cfg!(feature = "mbedtls") {
-        meson_args.push("-Duse_mbedtls=false".to_string());
-    } else {
-        meson_args.push("-Dbuiltin_mbedtls=true".to_string());
-    }
+    // Enable mbedtls by default for encryption and SRP support
+    // mbedtls provides: AES encryption, SRP authentication
+    meson_args.push("-Duse_mbedtls=true".to_string());
+    meson_args.push("-Dbuiltin_mbedtls=true".to_string());
 
     // Run meson setup
     run_command_vec("meson", &meson_args, &librist_src, "meson setup");

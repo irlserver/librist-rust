@@ -101,6 +101,7 @@ mod oob;
 mod peer;
 mod receiver;
 mod sender;
+mod srp;
 mod stats;
 mod types;
 
@@ -115,6 +116,7 @@ pub use oob::{OobBlock, OobBlockBuilder, MAX_OOB_PAYLOAD_SIZE};
 pub use peer::{PeerConfig, PeerHandle};
 pub use receiver::{ReceiverBuilder, RistReceiver};
 pub use sender::{RistSender, SenderBuilder};
+pub use srp::{SrpCredentials, SrpVerifier};
 pub use stats::{ReceiverPeerStats, ReceiverStats, SenderStats};
 pub use types::*;
 
