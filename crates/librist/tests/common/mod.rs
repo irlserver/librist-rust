@@ -8,16 +8,21 @@ static PORT_OFFSET: AtomicU16 = AtomicU16::new(0);
 
 /// Gets a unique port for testing.
 ///
-/// Uses the process ID to generate a base port, ensuring different forked
+/// Uses the process ID and current time to generate a base port, ensuring different forked
 /// processes use different port ranges. Within a process, allocates sequentially.
 ///
 /// Port range: 30000-60000, with each process getting a unique starting offset
-/// based on its PID.
+/// based on its PID and timestamp.
 pub fn get_test_port() -> u16 {
     let pid = std::process::id() as u16;
-    // Use PID to create a base offset, wrapping to stay in valid port range
+    // Use both PID and a hash of current time for better distribution
+    let time_component = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| (d.as_nanos() as u16) & 0xFF)
+        .unwrap_or(0);
+    // Combine PID and time for better uniqueness across parallel test runs
     // Each test within a process increments by 10 (enough for RIST's port pairs)
-    let base = 30000 + (pid % 3000) * 10;
+    let base = 30000 + ((pid.wrapping_add(time_component)) % 2500) * 10;
     let offset = PORT_OFFSET.fetch_add(10, Ordering::SeqCst);
     base + offset
 }
