@@ -159,7 +159,7 @@ impl RistReceiver {
         }
     }
 
-    /// Sends out-of-band data.
+    /// Sends out-of-band data to all peers.
     ///
     /// OOB data is transmitted via the RTCP channel with no buffering or
     /// retransmission. This is suitable for low-latency signaling.
@@ -177,7 +177,19 @@ impl RistReceiver {
         self.send_oob_block(&OobBlock::new(data.to_vec()))
     }
 
+    /// Sends out-of-band data to a specific peer.
+    ///
+    /// # Returns
+    ///
+    /// The number of bytes written.
+    pub fn send_oob_to_peer(&self, data: &[u8], peer: &PeerHandle) -> Result<usize> {
+        self.send_oob_block(&OobBlock::new(data.to_vec()).with_peer(peer))
+    }
+
     /// Sends an OOB block with optional peer targeting.
+    ///
+    /// If the block has a peer ID set (via [`OobBlock::with_peer`]), the data
+    /// will be sent only to that peer. Otherwise, it's sent to all peers.
     pub fn send_oob_block(&self, block: &OobBlock) -> Result<usize> {
         if !self.started.load(Ordering::Acquire) {
             return Err(Error::NotStarted);
@@ -189,8 +201,20 @@ impl RistReceiver {
             return Err(Error::ProfileNotSupported);
         }
 
+        // Look up peer pointer if peer_id is specified
+        let peer_ptr = if let Some(peer_id) = block.peer_id() {
+            let peers = self.peers.lock();
+            peers
+                .iter()
+                .find(|p| p.id() == peer_id)
+                .map(|p| p.as_raw())
+                .ok_or(Error::PeerNotFound)?
+        } else {
+            ptr::null_mut()
+        };
+
         let oob_block = librist_sys::rist_oob_block {
-            peer: ptr::null_mut(), // TODO: support targeting specific peer
+            peer: peer_ptr,
             payload: block.payload().as_ptr() as *const c_void,
             payload_len: block.payload().len(),
             ts_ntp: 0,

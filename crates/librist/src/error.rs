@@ -65,6 +65,10 @@ pub enum Error {
     #[error("Operation not supported with this profile")]
     ProfileNotSupported,
 
+    /// Peer not found (invalid peer ID).
+    #[error("Peer not found")]
+    PeerNotFound,
+
     /// An unspecified librist error occurred.
     #[error("librist error code: {0}")]
     Rist(i32),
