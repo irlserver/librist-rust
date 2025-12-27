@@ -50,10 +50,10 @@
 //! # Ok::<(), librist::Error>(())
 //! ```
 
-use crate::error::{check_result, Error, Result};
+use crate::error::{Error, Result, check_result};
 use crate::peer::PeerHandle;
 use librist_sys::libc;
-use std::ffi::{c_void, CString};
+use std::ffi::{CString, c_void};
 use std::sync::Arc;
 
 /// SRP client credentials (username and password).

@@ -14,8 +14,8 @@
 
 use librist::{LogLevel, Profile, ReceiverStats, RistReceiver};
 use std::env;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 fn main() -> librist::Result<()> {
@@ -51,7 +51,7 @@ fn main() -> librist::Result<()> {
         .log_level(LogLevel::Warn) // Only log warnings and errors from librist
         .on_stats(1000, move |stats: &ReceiverStats| {
             has_connection_stats.store(true, Ordering::SeqCst);
-            
+
             // Update cumulative counters
             total_packets_stats.fetch_add(stats.received_packets, Ordering::Relaxed);
             total_lost_stats.fetch_add(stats.lost_packets as u64, Ordering::Relaxed);
@@ -70,29 +70,49 @@ fn main() -> librist::Result<()> {
 
             // Print formatted stats
             println!("┌─────────────────────────────────────────────────────────────┐");
-            println!("│ Flow ID: {:10} │ Quality: {:6.2}%                      │", 
-                     stats.flow_id, stats.quality);
+            println!(
+                "│ Flow ID: {:10} │ Quality: {:6.2}%                      │",
+                stats.flow_id, stats.quality
+            );
             println!("├─────────────────────────────────────────────────────────────┤");
-            println!("│ Bandwidth:    {:8.2} Mbps                                 │",
-                     stats.bandwidth as f64 / 1_000_000.0 * 8.0);
-            println!("│ Received:     {:8} packets                              │",
-                     stats.received_packets);
-            println!("│ Lost:         {:8} packets                              │",
-                     stats.lost_packets);
-            println!("│ Recovered:    {:8} packets ({:5.1}% recovery rate)       │",
-                     stats.recovered_packets, recovery_rate);
-            println!("│ RTT:          {:8} ms                                    │",
-                     stats.rtt_ms);
-            println!("│ Spacing:      {:8.2} ms (min), {:8.2} ms (max)           │",
-                     min_spacing_ms, max_spacing_ms);
+            println!(
+                "│ Bandwidth:    {:8.2} Mbps                                 │",
+                stats.bandwidth as f64 / 1_000_000.0 * 8.0
+            );
+            println!(
+                "│ Received:     {:8} packets                              │",
+                stats.received_packets
+            );
+            println!(
+                "│ Lost:         {:8} packets                              │",
+                stats.lost_packets
+            );
+            println!(
+                "│ Recovered:    {:8} packets ({:5.1}% recovery rate)       │",
+                stats.recovered_packets, recovery_rate
+            );
+            println!(
+                "│ RTT:          {:8} ms                                    │",
+                stats.rtt_ms
+            );
+            println!(
+                "│ Spacing:      {:8.2} ms (min), {:8.2} ms (max)           │",
+                min_spacing_ms, max_spacing_ms
+            );
             println!("└─────────────────────────────────────────────────────────────┘");
             println!();
         })
         .on_connection(|peer_id, status| {
-            println!(">>> Connection event: peer={}, status={:?}", peer_id, status);
+            println!(
+                ">>> Connection event: peer={}, status={:?}",
+                peer_id, status
+            );
         })
         .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer_id| {
-            println!(">>> New connection from {}:{} (peer_id={})", conn_ip, conn_port, peer_id);
+            println!(
+                ">>> New connection from {}:{} (peer_id={})",
+                conn_ip, conn_port, peer_id
+            );
             true // Accept all connections
         })
         .on_auth_disconnect(|peer_id| {
@@ -118,7 +138,7 @@ fn main() -> librist::Result<()> {
         match receiver.recv(1000) {
             Ok(block) => {
                 total_packets.fetch_add(1, Ordering::Relaxed);
-                
+
                 // Check for issues
                 if block.is_discontinuity() {
                     println!("!!! DISCONTINUITY detected at seq={}", block.sequence());
@@ -147,7 +167,7 @@ fn main() -> librist::Result<()> {
             let packets = total_packets.load(Ordering::Relaxed);
             let lost = total_lost.load(Ordering::Relaxed);
             let recovered = total_recovered.load(Ordering::Relaxed);
-            
+
             if packets > 0 {
                 let loss_rate = lost as f64 / packets as f64 * 100.0;
                 println!("═══════════════════════════════════════════════════════════════");

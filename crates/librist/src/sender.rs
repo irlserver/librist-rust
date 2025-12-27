@@ -1,11 +1,11 @@
 //! RIST sender context and builder.
 
 use crate::callbacks::{
-    sender_connection_trampoline, sender_oob_trampoline, sender_stats_trampoline,
     ConnectionCallback, LogCallback, OobCallback, SenderCallbacks, StatsCallback,
+    sender_connection_trampoline, sender_oob_trampoline, sender_stats_trampoline,
 };
 use crate::data::DataBlockBuilder;
-use crate::error::{check_result, Error, Result};
+use crate::error::{Error, Result, check_result};
 use crate::logging::{LogLevel, LoggingSettings};
 use crate::oob::OobBlock;
 use crate::peer::{PeerConfig, PeerHandle};
@@ -14,8 +14,8 @@ use crate::types::*;
 use parking_lot::Mutex;
 use std::os::raw::{c_int, c_void};
 use std::ptr::{self, NonNull};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 // ============================================================================
 // RistSender
@@ -626,7 +626,10 @@ mod tests {
 
     #[test]
     fn test_sender_send_before_start() {
-        let sender = RistSender::builder().profile(Profile::Main).build().unwrap();
+        let sender = RistSender::builder()
+            .profile(Profile::Main)
+            .build()
+            .unwrap();
         sender.add_peer("rist://127.0.0.1:5000").unwrap();
         let result = sender.send(&[1, 2, 3]);
         assert!(matches!(result, Err(Error::NotStarted)));
@@ -634,7 +637,10 @@ mod tests {
 
     #[test]
     fn test_sender_oob_not_enabled() {
-        let sender = RistSender::builder().profile(Profile::Main).build().unwrap();
+        let sender = RistSender::builder()
+            .profile(Profile::Main)
+            .build()
+            .unwrap();
         sender.add_peer("rist://127.0.0.1:5000").unwrap();
         sender.start().unwrap();
         let result = sender.send_oob(b"test");

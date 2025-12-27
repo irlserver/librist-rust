@@ -1,6 +1,6 @@
 //! Peer configuration and management for RIST connections.
 
-use crate::error::{check_result, Error, Result};
+use crate::error::{Error, Result, check_result};
 use crate::types::*;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -179,8 +179,7 @@ impl PeerConfig {
     /// ).unwrap();
     /// ```
     pub fn from_url(url: &str) -> Result<Self> {
-        let url_cstr =
-            CString::new(url).map_err(|_| Error::InvalidUrl(url.to_string()))?;
+        let url_cstr = CString::new(url).map_err(|_| Error::InvalidUrl(url.to_string()))?;
 
         let mut config: *mut librist_sys::rist_peer_config = ptr::null_mut();
         let ret = unsafe { librist_sys::rist_parse_address2(url_cstr.as_ptr(), &mut config) };
@@ -203,7 +202,9 @@ impl PeerConfig {
     /// Sets the address/hostname.
     pub fn with_address(mut self, address: &str) -> Self {
         let bytes = address.as_bytes();
-        let len = bytes.len().min(librist_sys::RIST_MAX_STRING_LONG as usize - 1);
+        let len = bytes
+            .len()
+            .min(librist_sys::RIST_MAX_STRING_LONG as usize - 1);
         self.raw.address[..len].copy_from_slice(unsafe {
             std::slice::from_raw_parts(bytes.as_ptr() as *const c_char, len)
         });
@@ -284,7 +285,9 @@ impl PeerConfig {
     /// The secret is used for AES encryption when `key_size` is set.
     pub fn with_secret(mut self, secret: &str) -> Self {
         let bytes = secret.as_bytes();
-        let len = bytes.len().min(librist_sys::RIST_MAX_STRING_SHORT as usize - 1);
+        let len = bytes
+            .len()
+            .min(librist_sys::RIST_MAX_STRING_SHORT as usize - 1);
         self.raw.secret[..len].copy_from_slice(unsafe {
             std::slice::from_raw_parts(bytes.as_ptr() as *const c_char, len)
         });
@@ -305,7 +308,9 @@ impl PeerConfig {
     /// Sets the CNAME (canonical name) for RTCP.
     pub fn with_cname(mut self, cname: &str) -> Self {
         let bytes = cname.as_bytes();
-        let len = bytes.len().min(librist_sys::RIST_MAX_STRING_SHORT as usize - 1);
+        let len = bytes
+            .len()
+            .min(librist_sys::RIST_MAX_STRING_SHORT as usize - 1);
         self.raw.cname[..len].copy_from_slice(unsafe {
             std::slice::from_raw_parts(bytes.as_ptr() as *const c_char, len)
         });
@@ -347,7 +352,9 @@ impl PeerConfig {
     /// Sets the multicast interface.
     pub fn with_multicast_interface(mut self, iface: &str) -> Self {
         let bytes = iface.as_bytes();
-        let len = bytes.len().min(librist_sys::RIST_MAX_STRING_SHORT as usize - 1);
+        let len = bytes
+            .len()
+            .min(librist_sys::RIST_MAX_STRING_SHORT as usize - 1);
         self.raw.miface[..len].copy_from_slice(unsafe {
             std::slice::from_raw_parts(bytes.as_ptr() as *const c_char, len)
         });

@@ -1,13 +1,13 @@
 //! RIST receiver context and builder.
 
 use crate::callbacks::{
-    auth_connect_trampoline, auth_disconnect_trampoline, receiver_connection_trampoline,
-    receiver_data_trampoline, receiver_oob_trampoline, receiver_stats_trampoline,
     AuthConnectCallback, AuthDisconnectCallback, ConnectionCallback, DataCallback, LogCallback,
-    OobCallback, ReceiverCallbacks, StatsCallback,
+    OobCallback, ReceiverCallbacks, StatsCallback, auth_connect_trampoline,
+    auth_disconnect_trampoline, receiver_connection_trampoline, receiver_data_trampoline,
+    receiver_oob_trampoline, receiver_stats_trampoline,
 };
 use crate::data::DataBlock;
-use crate::error::{check_result, Error, Result};
+use crate::error::{Error, Result, check_result};
 use crate::logging::{LogLevel, LoggingSettings};
 use crate::oob::OobBlock;
 use crate::peer::{PeerConfig, PeerHandle};
@@ -16,8 +16,8 @@ use crate::types::*;
 use parking_lot::Mutex;
 use std::os::raw::{c_int, c_void};
 use std::ptr::{self, NonNull};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 // ============================================================================
 // RistReceiver
@@ -229,8 +229,9 @@ impl RistReceiver {
 
     /// Sets the NACK type.
     pub fn set_nack_type(&self, nack_type: NackType) -> Result<()> {
-        let ret =
-            unsafe { librist_sys::rist_receiver_nack_type_set(self.ctx.as_ptr(), nack_type.into()) };
+        let ret = unsafe {
+            librist_sys::rist_receiver_nack_type_set(self.ctx.as_ptr(), nack_type.into())
+        };
         check_result(ret)
     }
 
@@ -582,8 +583,9 @@ impl ReceiverBuilder {
 
         // Create context
         let mut ctx: *mut librist_sys::rist_ctx = ptr::null_mut();
-        let ret =
-            unsafe { librist_sys::rist_receiver_create(&mut ctx, self.profile.into(), logging_ptr) };
+        let ret = unsafe {
+            librist_sys::rist_receiver_create(&mut ctx, self.profile.into(), logging_ptr)
+        };
 
         if ret != 0 || ctx.is_null() {
             return Err(Error::ContextCreationFailed);
@@ -671,10 +673,12 @@ mod tests {
 
         let _builder = ReceiverBuilder::default()
             .profile(Profile::Main)
-            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
-                auth_called_clone.store(true, Ordering::SeqCst);
-                true // Accept connection
-            })
+            .on_auth_connect(
+                move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+                    auth_called_clone.store(true, Ordering::SeqCst);
+                    true // Accept connection
+                },
+            )
             .on_auth_disconnect(move |_peer_id| {
                 disconnect_called_clone.store(true, Ordering::SeqCst);
             });
@@ -718,9 +722,11 @@ mod tests {
 
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
-            .on_auth_connect(move |conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
-                allowed_ips.contains(&conn_ip.to_string())
-            })
+            .on_auth_connect(
+                move |conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+                    allowed_ips.contains(&conn_ip.to_string())
+                },
+            )
             .build();
 
         assert!(receiver.is_ok());
@@ -752,10 +758,12 @@ mod tests {
 
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
-            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
-                connect_clone.fetch_add(1, Ordering::SeqCst);
-                true
-            })
+            .on_auth_connect(
+                move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+                    connect_clone.fetch_add(1, Ordering::SeqCst);
+                    true
+                },
+            )
             .on_auth_disconnect(move |_peer_id| {
                 disconnect_clone.fetch_add(1, Ordering::SeqCst);
             })
@@ -780,7 +788,10 @@ mod tests {
 
     #[test]
     fn test_receiver_oob_not_enabled() {
-        let receiver = RistReceiver::builder().profile(Profile::Main).build().unwrap();
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .build()
+            .unwrap();
         receiver.add_peer("rist://@:15000").unwrap();
         receiver.start().unwrap();
         let result = receiver.send_oob(b"test");

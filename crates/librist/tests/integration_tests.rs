@@ -16,8 +16,8 @@ mod common;
 use common::*;
 use librist::{ConnectionStatus, Error, LogLevel, Profile, RistReceiver, RistSender};
 use rusty_fork::rusty_fork_test;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 
 /// Magic bytes to identify handshake packets (unlikely to collide with test data)
@@ -75,7 +75,10 @@ fn create_recv_test_context(profile: Profile) -> (RistSender, RistReceiver, u16)
         || receiver_ready.load(Ordering::SeqCst) && sender_ready.load(Ordering::SeqCst),
         Duration::from_secs(10),
     );
-    assert!(connected, "Connection callbacks not received within timeout");
+    assert!(
+        connected,
+        "Connection callbacks not received within timeout"
+    );
 
     // Verify the full data path (send + receive) works
     let handshake_ok = wait_for(
@@ -89,7 +92,10 @@ fn create_recv_test_context(profile: Profile) -> (RistSender, RistReceiver, u16)
         },
         Duration::from_secs(10),
     );
-    assert!(handshake_ok, "Data path handshake not completed within timeout");
+    assert!(
+        handshake_ok,
+        "Data path handshake not completed within timeout"
+    );
 
     // Drain any extra handshake packets
     let drain_end = std::time::Instant::now() + Duration::from_millis(200);
@@ -169,7 +175,10 @@ where
         || receiver_ready.load(Ordering::SeqCst) && sender_ready.load(Ordering::SeqCst),
         Duration::from_secs(10),
     );
-    assert!(connected, "Connection callbacks not received within timeout");
+    assert!(
+        connected,
+        "Connection callbacks not received within timeout"
+    );
 
     // Perform handshake to verify data path is ready
     let handshake_ok = wait_for(

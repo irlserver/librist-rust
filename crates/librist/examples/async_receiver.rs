@@ -73,7 +73,11 @@ async fn main() -> librist::Result<()> {
     }
 
     println!();
-    println!("Final stats: {} packets, {:.2} MB", total_packets, total_bytes as f64 / 1_000_000.0);
+    println!(
+        "Final stats: {} packets, {:.2} MB",
+        total_packets,
+        total_bytes as f64 / 1_000_000.0
+    );
 
     Ok(())
 }

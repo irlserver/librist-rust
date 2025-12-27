@@ -108,7 +108,8 @@ impl DataBlock {
     /// A discontinuity indicates that one or more packets were lost
     /// before this block.
     pub fn is_discontinuity(&self) -> bool {
-        self.receiver_flags().contains(ReceiverDataFlags::DISCONTINUITY)
+        self.receiver_flags()
+            .contains(ReceiverDataFlags::DISCONTINUITY)
     }
 
     /// Checks if this is the start of a flow buffer.
@@ -208,7 +209,10 @@ impl DataBlockBuilder {
     pub(crate) fn build_raw<'a>(
         &self,
         payload: &'a [u8],
-    ) -> (librist_sys::rist_data_block, std::marker::PhantomData<&'a [u8]>) {
+    ) -> (
+        librist_sys::rist_data_block,
+        std::marker::PhantomData<&'a [u8]>,
+    ) {
         let mut flags = 0u32;
         if self.seq.is_some() {
             flags |= librist_sys::rist_data_block_sender_flags::RIST_DATA_FLAGS_USE_SEQ.0;

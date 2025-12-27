@@ -74,7 +74,10 @@ mod tests {
             assert_eq!(result, 0);
 
             // Check some default values
-            assert_eq!(config.recovery_mode, rist_recovery_mode::RIST_RECOVERY_MODE_TIME);
+            assert_eq!(
+                config.recovery_mode,
+                rist_recovery_mode::RIST_RECOVERY_MODE_TIME
+            );
             assert_eq!(config.recovery_maxbitrate, RIST_DEFAULT_RECOVERY_MAXBITRATE);
             assert_eq!(config.recovery_length_min, RIST_DEFAULT_RECOVERY_LENGTH_MIN);
             assert_eq!(config.recovery_length_max, RIST_DEFAULT_RECOVERY_LENGTH_MAX);

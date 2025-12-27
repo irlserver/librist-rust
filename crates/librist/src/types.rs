@@ -1,6 +1,5 @@
 //! Common types and enums for librist.
 
-
 /// RIST protocol profile.
 ///
 /// The profile determines which features are available and
@@ -148,9 +147,7 @@ impl From<RecoveryMode> for librist_sys::rist_recovery_mode {
             RecoveryMode::Unconfigured => {
                 librist_sys::rist_recovery_mode::RIST_RECOVERY_MODE_UNCONFIGURED
             }
-            RecoveryMode::Disabled => {
-                librist_sys::rist_recovery_mode::RIST_RECOVERY_MODE_DISABLED
-            }
+            RecoveryMode::Disabled => librist_sys::rist_recovery_mode::RIST_RECOVERY_MODE_DISABLED,
             RecoveryMode::Time => librist_sys::rist_recovery_mode::RIST_RECOVERY_MODE_TIME,
         }
     }

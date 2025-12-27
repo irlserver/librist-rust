@@ -9,8 +9,8 @@
 
 use librist::{LogLevel, Profile, ReceiverStats, RistReceiver};
 use std::env;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 fn main() -> librist::Result<()> {

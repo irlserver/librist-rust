@@ -198,19 +198,21 @@ impl AsyncRistReceiver {
         let (tx, rx) = mpsc::channel(buffer_size);
 
         let receiver_clone = receiver.clone();
-        let poll_handle = tokio::task::spawn_blocking(move || loop {
-            match receiver_clone.recv(100) {
-                Ok(block) => {
-                    if tx.blocking_send(block).is_err() {
-                        break;
+        let poll_handle = tokio::task::spawn_blocking(move || {
+            loop {
+                match receiver_clone.recv(100) {
+                    Ok(block) => {
+                        if tx.blocking_send(block).is_err() {
+                            break;
+                        }
                     }
-                }
-                Err(Error::Timeout) => {
-                    if tx.is_closed() {
-                        break;
+                    Err(Error::Timeout) => {
+                        if tx.is_closed() {
+                            break;
+                        }
                     }
+                    Err(_) => break,
                 }
-                Err(_) => break,
             }
         });
 
@@ -283,7 +285,10 @@ mod tests {
     #[test]
     fn test_async_sender_creation() {
         // Just test that we can create the types
-        let sender = RistSender::builder().profile(Profile::Main).build().unwrap();
+        let sender = RistSender::builder()
+            .profile(Profile::Main)
+            .build()
+            .unwrap();
 
         let async_sender = AsyncRistSender::new(sender);
         assert!(!async_sender.inner().is_started());
@@ -291,7 +296,10 @@ mod tests {
 
     #[test]
     fn test_async_sender_clone() {
-        let sender = RistSender::builder().profile(Profile::Main).build().unwrap();
+        let sender = RistSender::builder()
+            .profile(Profile::Main)
+            .build()
+            .unwrap();
 
         let async_sender1 = AsyncRistSender::new(sender);
         let async_sender2 = async_sender1.clone();
@@ -305,7 +313,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_async_sender_send_not_started() {
-        let sender = RistSender::builder().profile(Profile::Main).build().unwrap();
+        let sender = RistSender::builder()
+            .profile(Profile::Main)
+            .build()
+            .unwrap();
 
         let async_sender = AsyncRistSender::new(sender);
 

@@ -114,7 +114,7 @@ mod srp;
 pub use data::DataBlock;
 pub use error::{Error, Result};
 pub use logging::{LogLevel, LoggingSettings};
-pub use oob::{OobBlock, OobBlockBuilder, MAX_OOB_PAYLOAD_SIZE};
+pub use oob::{MAX_OOB_PAYLOAD_SIZE, OobBlock, OobBlockBuilder};
 pub use peer::{PeerConfig, PeerHandle};
 pub use receiver::{ReceiverBuilder, RistReceiver};
 pub use sender::{RistSender, SenderBuilder};
@@ -132,9 +132,7 @@ pub use async_context::{AsyncRistReceiver, AsyncRistSender};
 pub fn version() -> &'static str {
     unsafe {
         let ptr = librist_sys::librist_version();
-        std::ffi::CStr::from_ptr(ptr)
-            .to_str()
-            .unwrap_or("unknown")
+        std::ffi::CStr::from_ptr(ptr).to_str().unwrap_or("unknown")
     }
 }
 
@@ -142,9 +140,7 @@ pub fn version() -> &'static str {
 pub fn api_version() -> &'static str {
     unsafe {
         let ptr = librist_sys::librist_api_version();
-        std::ffi::CStr::from_ptr(ptr)
-            .to_str()
-            .unwrap_or("unknown")
+        std::ffi::CStr::from_ptr(ptr).to_str().unwrap_or("unknown")
     }
 }
 

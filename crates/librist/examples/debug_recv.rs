@@ -1,8 +1,8 @@
 //! Debug test for recv() behavior
 
 use librist::{ConnectionStatus, Profile, RistReceiver, RistSender};
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 
 fn main() {
@@ -24,7 +24,7 @@ fn main() {
         // NO on_data callback - use recv() instead
         .build()
         .expect("Failed to create receiver");
-    
+
     // Mark as used to avoid warning
     let _ = data_received_clone;
 

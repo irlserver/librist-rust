@@ -20,10 +20,13 @@ fn main() -> librist::Result<()> {
 
     // Get destination URLs from command line
     let args: Vec<String> = env::args().collect();
-    
+
     if args.len() < 3 {
         eprintln!("Usage: {} <url1> <url2> [url3...]", args[0]);
-        eprintln!("Example: {} rist://192.168.1.100:5000 rist://10.0.0.100:5000", args[0]);
+        eprintln!(
+            "Example: {} rist://192.168.1.100:5000 rist://10.0.0.100:5000",
+            args[0]
+        );
         eprintln!();
         eprintln!("URL options for bonding:");
         eprintln!("  ?weight=0    Duplicate mode (default) - send on all paths");
@@ -94,8 +97,12 @@ fn main() -> librist::Result<()> {
         match sender.send(&packet) {
             Ok(bytes) => {
                 if seq % 1000 == 0 {
-                    println!("Sent {} packets ({} bytes each) via {} bonded paths", 
-                             seq, bytes, urls.len());
+                    println!(
+                        "Sent {} packets ({} bytes each) via {} bonded paths",
+                        seq,
+                        bytes,
+                        urls.len()
+                    );
                 }
             }
             Err(e) => {

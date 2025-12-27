@@ -86,7 +86,7 @@ fn build_librist(
     // Use builtin dependencies for easier static linking
     meson_args.push("-Dbuiltin_cjson=true".to_string());
     meson_args.push("-Dfallback_builtin=true".to_string());
-    
+
     // mbedTLS provides AES encryption and SRP authentication
     // Enabled by default, can be disabled with default-features = false
     if cfg!(feature = "mbedtls") {

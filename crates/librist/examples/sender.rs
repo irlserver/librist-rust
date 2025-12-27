@@ -17,7 +17,10 @@ fn main() -> librist::Result<()> {
 
     // Get destination URL from command line
     let args: Vec<String> = env::args().collect();
-    let url = args.get(1).map(|s| s.as_str()).unwrap_or("rist://127.0.0.1:5000");
+    let url = args
+        .get(1)
+        .map(|s| s.as_str())
+        .unwrap_or("rist://127.0.0.1:5000");
 
     println!("librist version: {}", librist::version());
     println!("Sending to: {}", url);

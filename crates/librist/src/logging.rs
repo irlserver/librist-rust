@@ -118,7 +118,9 @@ impl LoggingSettings {
         };
 
         if ret != 0 || settings.is_null() {
-            return Err(crate::Error::Other("Failed to create logging settings".into()));
+            return Err(crate::Error::Other(
+                "Failed to create logging settings".into(),
+            ));
         }
 
         Ok(Self {
@@ -156,7 +158,9 @@ impl LoggingSettings {
             unsafe {
                 let _ = Box::from_raw(callback_ptr);
             }
-            return Err(crate::Error::Other("Failed to create logging settings".into()));
+            return Err(crate::Error::Other(
+                "Failed to create logging settings".into(),
+            ));
         }
 
         // Convert back to Box for storage (we need to keep it alive)
@@ -170,16 +174,14 @@ impl LoggingSettings {
 
     /// Creates logging settings that forward to the `log` crate.
     pub fn with_log_crate(level: LogLevel) -> crate::Result<Self> {
-        Self::with_callback(level, |log_level, msg| {
-            match log_level {
-                LogLevel::Disable => {}
-                LogLevel::Error => log::error!(target: "librist", "{}", msg),
-                LogLevel::Warn => log::warn!(target: "librist", "{}", msg),
-                LogLevel::Notice => log::info!(target: "librist", "{}", msg),
-                LogLevel::Info => log::info!(target: "librist", "{}", msg),
-                LogLevel::Debug => log::debug!(target: "librist", "{}", msg),
-                LogLevel::Simulate => log::trace!(target: "librist", "{}", msg),
-            }
+        Self::with_callback(level, |log_level, msg| match log_level {
+            LogLevel::Disable => {}
+            LogLevel::Error => log::error!(target: "librist", "{}", msg),
+            LogLevel::Warn => log::warn!(target: "librist", "{}", msg),
+            LogLevel::Notice => log::info!(target: "librist", "{}", msg),
+            LogLevel::Info => log::info!(target: "librist", "{}", msg),
+            LogLevel::Debug => log::debug!(target: "librist", "{}", msg),
+            LogLevel::Simulate => log::trace!(target: "librist", "{}", msg),
         })
     }
 
@@ -197,16 +199,14 @@ impl LoggingSettings {
     /// ```
     #[cfg(feature = "tracing")]
     pub fn with_tracing(level: LogLevel) -> crate::Result<Self> {
-        Self::with_callback(level, |log_level, msg| {
-            match log_level {
-                LogLevel::Disable => {}
-                LogLevel::Error => tracing::error!(target: "librist", "{}", msg),
-                LogLevel::Warn => tracing::warn!(target: "librist", "{}", msg),
-                LogLevel::Notice => tracing::info!(target: "librist", "{}", msg),
-                LogLevel::Info => tracing::info!(target: "librist", "{}", msg),
-                LogLevel::Debug => tracing::debug!(target: "librist", "{}", msg),
-                LogLevel::Simulate => tracing::trace!(target: "librist", "{}", msg),
-            }
+        Self::with_callback(level, |log_level, msg| match log_level {
+            LogLevel::Disable => {}
+            LogLevel::Error => tracing::error!(target: "librist", "{}", msg),
+            LogLevel::Warn => tracing::warn!(target: "librist", "{}", msg),
+            LogLevel::Notice => tracing::info!(target: "librist", "{}", msg),
+            LogLevel::Info => tracing::info!(target: "librist", "{}", msg),
+            LogLevel::Debug => tracing::debug!(target: "librist", "{}", msg),
+            LogLevel::Simulate => tracing::trace!(target: "librist", "{}", msg),
         })
     }
 
