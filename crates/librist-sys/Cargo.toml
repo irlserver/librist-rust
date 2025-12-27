@@ -8,8 +8,26 @@ license.workspace = true
 repository.workspace = true
 keywords.workspace = true
 categories.workspace = true
+readme = "../../README.md"
+documentation = "https://docs.rs/librist-sys"
+homepage = "https://github.com/irlserver/librist-rust"
 links = "rist"
 build = "build.rs"
+
+# Include only what's needed for building - vendored source is in librist submodule
+include = [
+    "src/**/*",
+    "build.rs",
+    "wrapper.h",
+    "Cargo.toml",
+    "librist/src/**",
+    "librist/include/**",
+    "librist/contrib/**",
+    "librist/common/**",
+    "librist/compat/**",
+    "librist/meson.build",
+    "librist/meson_options.txt",
+]
 
 [features]
 default = ["bundled", "mbedtls"]
