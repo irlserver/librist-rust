@@ -111,7 +111,7 @@ mod async_context;
 mod srp;
 
 // Re-export public API
-pub use data::DataBlock;
+pub use data::{DataBlock, DataBlockBuilder};
 pub use error::{Error, Result};
 pub use logging::{LogLevel, LoggingSettings};
 pub use oob::{MAX_OOB_PAYLOAD_SIZE, OobBlock, OobBlockBuilder};

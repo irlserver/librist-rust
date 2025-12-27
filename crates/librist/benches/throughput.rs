@@ -4,7 +4,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use librist::{LogLevel, Profile, RistReceiver, RistSender};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -197,9 +197,9 @@ fn bench_callback_overhead(c: &mut Criterion) {
     group.finish();
 }
 
-/// Benchmark DataBlock creation
+/// Benchmark DataBlockBuilder
 fn bench_datablock(c: &mut Criterion) {
-    use librist::DataBlock;
+    use librist::DataBlockBuilder;
 
     let mut group = c.benchmark_group("datablock");
 
@@ -209,10 +209,13 @@ fn bench_datablock(c: &mut Criterion) {
         let data = vec![0xABu8; size];
 
         group.throughput(Throughput::Bytes(size as u64));
-        group.bench_with_input(BenchmarkId::new("create", size), &data, |b, data| {
+        group.bench_with_input(BenchmarkId::new("builder", size), &data, |b, data| {
             b.iter(|| {
-                let block = DataBlock::new(black_box(data.clone()));
-                black_box(block);
+                let builder = DataBlockBuilder::new()
+                    .virtual_dst_port(1234)
+                    .timestamp_ntp(12345678);
+                black_box(builder);
+                black_box(data);
             });
         });
     }
