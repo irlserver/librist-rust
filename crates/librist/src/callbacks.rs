@@ -6,7 +6,7 @@
 use crate::data::DataBlock;
 use crate::oob::OobBlock;
 use crate::stats::{ReceiverStats, SenderStats, StatsWrapper};
-use crate::types::ConnectionStatus;
+use crate::types::{ConnectionStatus, PeerInfo};
 use parking_lot::Mutex;
 use std::os::raw::{c_char, c_int, c_void};
 use std::sync::Arc;
@@ -27,11 +27,23 @@ pub(crate) type ConnectionCallback = Box<dyn Fn(u32, ConnectionStatus) + Send + 
 /// Data received callback.
 pub(crate) type DataCallback = Box<dyn Fn(DataBlock) + Send + Sync>;
 
-/// Auth connect callback: (conn_ip, conn_port, local_ip, local_port, peer_id) -> accept.
-pub(crate) type AuthConnectCallback = Box<dyn Fn(&str, u16, &str, u16, u32) -> bool + Send + Sync>;
+/// Auth connect callback: (conn_ip, conn_port, local_ip, local_port, peer_info) -> accept.
+///
+/// The callback receives:
+/// - `conn_ip` - The IP address of the connecting peer
+/// - `conn_port` - The port of the connecting peer
+/// - `local_ip` - The local IP address the connection was received on
+/// - `local_port` - The local port the connection was received on
+/// - `peer_info` - Information about the peer including ID and CNAME
+///
+/// Return `true` to accept the connection, `false` to reject it.
+pub(crate) type AuthConnectCallback =
+    Box<dyn Fn(&str, u16, &str, u16, &PeerInfo) -> bool + Send + Sync>;
 
-/// Auth disconnect callback: (peer_id).
-pub(crate) type AuthDisconnectCallback = Box<dyn Fn(u32) + Send + Sync>;
+/// Auth disconnect callback: (peer_info).
+///
+/// Called when a peer disconnects. Receives the peer information.
+pub(crate) type AuthDisconnectCallback = Box<dyn Fn(&PeerInfo) + Send + Sync>;
 
 /// Out-of-band data received callback.
 pub(crate) type OobCallback = Box<dyn Fn(OobBlock) + Send + Sync>;
@@ -264,13 +276,11 @@ pub(crate) unsafe extern "C" fn auth_connect_trampoline(
                     .to_str()
                     .unwrap_or("")
             };
-            let peer_id = if peer.is_null() {
-                0
-            } else {
-                unsafe { librist_sys::rist_peer_get_id(peer) }
-            };
 
-            if callback(conn_ip_str, conn_port, local_ip_str, local_port, peer_id) {
+            // Extract peer info from raw pointer
+            let peer_info = unsafe { PeerInfo::from_raw(peer) };
+
+            if callback(conn_ip_str, conn_port, local_ip_str, local_port, &peer_info) {
                 0 // Accept
             } else {
                 -1 // Reject
@@ -300,12 +310,9 @@ pub(crate) unsafe extern "C" fn auth_disconnect_trampoline(
 
         let guard = callbacks_ref.lock();
         if let Some(ref callback) = guard.auth_disconnect {
-            let peer_id = if peer.is_null() {
-                0
-            } else {
-                unsafe { librist_sys::rist_peer_get_id(peer) }
-            };
-            callback(peer_id);
+            // Extract peer info from raw pointer
+            let peer_info = unsafe { PeerInfo::from_raw(peer) };
+            callback(&peer_info);
         }
     });
 

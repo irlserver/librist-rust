@@ -12,7 +12,7 @@ use crate::logging::{LogLevel, LoggingSettings};
 use crate::oob::OobBlock;
 use crate::peer::{PeerConfig, PeerHandle};
 use crate::stats::ReceiverStats;
-use crate::types::*;
+use crate::types::{ConnectionStatus, NackType, PeerInfo, Profile};
 use parking_lot::Mutex;
 use std::os::raw::{c_int, c_void};
 use std::ptr::{self, NonNull};
@@ -482,17 +482,31 @@ impl ReceiverBuilder {
     /// - `conn_port` - The connecting peer's port
     /// - `local_ip` - The local IP address
     /// - `local_port` - The local port
-    /// - `peer_id` - The peer's unique identifier
+    /// - `peer` - A [`PeerInfo`] struct containing the peer's ID and CNAME
+    ///
+    /// # Peer Information
+    ///
+    /// The [`PeerInfo`] struct provides access to:
+    /// - `id` - A locally-assigned auto-incrementing identifier (not for auth)
+    /// - `cname` - The RTCP Canonical Name (SDES CNAME), a user-configurable identifier
+    ///
+    /// Note: The peer ID is just an auto-incrementing counter and should not be used
+    /// for authentication decisions. The CNAME is user-configurable via the URL
+    /// `cname=` parameter and can be used for peer identification.
     ///
     /// # Example
     ///
     /// ```no_run
-    /// use librist::{RistReceiver, Profile};
+    /// use librist::{RistReceiver, Profile, PeerInfo};
     ///
     /// let receiver = RistReceiver::builder()
     ///     .profile(Profile::Main)
-    ///     .on_auth_connect(|conn_ip, conn_port, local_ip, local_port, peer_id| {
+    ///     .on_auth_connect(|conn_ip, conn_port, local_ip, local_port, peer| {
     ///         println!("Connection from {}:{}", conn_ip, conn_port);
+    ///         println!("Peer: {}", peer);
+    ///         if let Some(cname) = &peer.cname {
+    ///             println!("CNAME: {}", cname);
+    ///         }
     ///         // Accept all connections
     ///         true
     ///     })
@@ -501,7 +515,7 @@ impl ReceiverBuilder {
     /// ```
     pub fn on_auth_connect<F>(mut self, callback: F) -> Self
     where
-        F: Fn(&str, u16, &str, u16, u32) -> bool + Send + Sync + 'static,
+        F: Fn(&str, u16, &str, u16, &PeerInfo) -> bool + Send + Sync + 'static,
     {
         self.auth_connect_callback = Some(Box::new(callback));
         self
@@ -509,13 +523,29 @@ impl ReceiverBuilder {
 
     /// Sets a callback for peer disconnection events.
     ///
+    /// Called when a peer disconnects from the receiver.
+    ///
     /// # Arguments
     ///
     /// The callback receives:
-    /// - `peer_id` - The peer's unique identifier
+    /// - `peer` - A [`PeerInfo`] struct containing the peer's ID and CNAME
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use librist::{RistReceiver, Profile, PeerInfo};
+    ///
+    /// let receiver = RistReceiver::builder()
+    ///     .profile(Profile::Main)
+    ///     .on_auth_disconnect(|peer| {
+    ///         println!("Peer disconnected: {}", peer);
+    ///     })
+    ///     .build()?;
+    /// # Ok::<(), librist::Error>(())
+    /// ```
     pub fn on_auth_disconnect<F>(mut self, callback: F) -> Self
     where
-        F: Fn(u32) + Send + Sync + 'static,
+        F: Fn(&PeerInfo) + Send + Sync + 'static,
     {
         self.auth_disconnect_callback = Some(Box::new(callback));
         self
@@ -673,13 +703,11 @@ mod tests {
 
         let _builder = ReceiverBuilder::default()
             .profile(Profile::Main)
-            .on_auth_connect(
-                move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
-                    auth_called_clone.store(true, Ordering::SeqCst);
-                    true // Accept connection
-                },
-            )
-            .on_auth_disconnect(move |_peer_id| {
+            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer| {
+                auth_called_clone.store(true, Ordering::SeqCst);
+                true // Accept connection
+            })
+            .on_auth_disconnect(move |_peer| {
                 disconnect_called_clone.store(true, Ordering::SeqCst);
             });
 
@@ -692,10 +720,10 @@ mod tests {
     fn test_receiver_with_auth_accept_all() {
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
-            .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer_id| {
+            .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer| {
                 println!(
-                    "Auth request from {}:{} (peer_id={})",
-                    conn_ip, conn_port, peer_id
+                    "Auth request from {}:{} (peer={})",
+                    conn_ip, conn_port, peer
                 );
                 true // Accept all
             })
@@ -708,7 +736,7 @@ mod tests {
     fn test_receiver_with_auth_reject_all() {
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
-            .on_auth_connect(|_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
+            .on_auth_connect(|_conn_ip, _conn_port, _local_ip, _local_port, _peer| {
                 false // Reject all
             })
             .build();
@@ -722,11 +750,9 @@ mod tests {
 
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
-            .on_auth_connect(
-                move |conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
-                    allowed_ips.contains(&conn_ip.to_string())
-                },
-            )
+            .on_auth_connect(move |conn_ip, _conn_port, _local_ip, _local_port, _peer| {
+                allowed_ips.contains(&conn_ip.to_string())
+            })
             .build();
 
         assert!(receiver.is_ok());
@@ -739,8 +765,8 @@ mod tests {
 
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
-            .on_auth_disconnect(move |peer_id| {
-                println!("Peer {} disconnected", peer_id);
+            .on_auth_disconnect(move |peer| {
+                println!("Peer {} disconnected", peer);
                 count_clone.fetch_add(1, Ordering::SeqCst);
             })
             .build();
@@ -758,13 +784,11 @@ mod tests {
 
         let receiver = RistReceiver::builder()
             .profile(Profile::Main)
-            .on_auth_connect(
-                move |_conn_ip, _conn_port, _local_ip, _local_port, _peer_id| {
-                    connect_clone.fetch_add(1, Ordering::SeqCst);
-                    true
-                },
-            )
-            .on_auth_disconnect(move |_peer_id| {
+            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, _peer| {
+                connect_clone.fetch_add(1, Ordering::SeqCst);
+                true
+            })
+            .on_auth_disconnect(move |_peer| {
                 disconnect_clone.fetch_add(1, Ordering::SeqCst);
             })
             .build();
@@ -772,6 +796,44 @@ mod tests {
         assert!(receiver.is_ok());
         assert_eq!(connect_count.load(Ordering::SeqCst), 0);
         assert_eq!(disconnect_count.load(Ordering::SeqCst), 0);
+    }
+
+    #[test]
+    fn test_receiver_with_peer_info_access() {
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer| {
+                println!("Connection from {}:{}", conn_ip, conn_port);
+                println!("Peer ID: {}", peer.id);
+                if let Some(ref cname) = peer.cname {
+                    println!("Peer CNAME: {}", cname);
+                }
+                true
+            })
+            .on_auth_disconnect(|peer| {
+                println!("Disconnected: {} (cname: {:?})", peer.id, peer.cname);
+            })
+            .build();
+
+        assert!(receiver.is_ok());
+    }
+
+    #[test]
+    fn test_receiver_with_cname_filter() {
+        let allowed_cnames = vec!["trusted-sender".to_string(), "backup-sender".to_string()];
+
+        let receiver = RistReceiver::builder()
+            .profile(Profile::Main)
+            .on_auth_connect(move |_conn_ip, _conn_port, _local_ip, _local_port, peer| {
+                // Only accept peers with recognized CNAMEs
+                peer.cname
+                    .as_ref()
+                    .map(|c| allowed_cnames.contains(c))
+                    .unwrap_or(false)
+            })
+            .build();
+
+        assert!(receiver.is_ok());
     }
 
     #[test]

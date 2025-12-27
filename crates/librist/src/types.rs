@@ -284,6 +284,132 @@ pub const DEFAULT_SESSION_TIMEOUT: u32 = librist_sys::RIST_DEFAULT_SESSION_TIMEO
 /// Default keepalive interval in milliseconds.
 pub const DEFAULT_KEEPALIVE_INTERVAL: u32 = librist_sys::RIST_DEFAULT_KEEPALIVE_INTERVAL;
 
+// ============================================================================
+// PeerInfo - Information about a peer for authentication callbacks
+// ============================================================================
+
+/// Information about a connecting peer provided to authentication callbacks.
+///
+/// This struct contains metadata extracted from the librist `rist_peer` structure,
+/// providing safe access to peer information without exposing the raw C pointer.
+///
+/// # Fields
+///
+/// - `id` - A locally-generated auto-incrementing identifier (not cryptographically secure)
+/// - `cname` - The RTCP Canonical Name (SDES CNAME), a user-configurable identifier
+///
+/// # Authentication Notes
+///
+/// The `id` field is assigned sequentially by librist when peers connect and is primarily
+/// useful for tracking peers within a session. It should **not** be used for authentication
+/// decisions as it's just an auto-incrementing counter.
+///
+/// The `cname` field comes from the RTCP SDES (Source Description) and is configurable
+/// by the connecting peer via the URL `cname=` parameter. This can be useful for
+/// identifying peers by a human-readable name, but note that it can be freely set
+/// by the sender and should not be trusted for security purposes.
+///
+/// For actual authentication, consider:
+/// - IP-based filtering using the connection IP provided to the callback
+/// - SRP authentication via [`crate::SrpCredentials`] (requires `srp` feature)
+/// - Pre-shared encryption keys via URL `secret=` parameter
+///
+/// # Example
+///
+/// ```no_run
+/// use librist::{RistReceiver, Profile, PeerInfo};
+///
+/// let receiver = RistReceiver::builder()
+///     .profile(Profile::Main)
+///     .on_auth_connect(|conn_ip, conn_port, local_ip, local_port, peer| {
+///         println!("Connection from {}:{}", conn_ip, conn_port);
+///         println!("Peer ID: {}", peer.id);
+///         if let Some(cname) = &peer.cname {
+///             println!("Peer CNAME: {}", cname);
+///         }
+///         // Accept connections from localhost only
+///         conn_ip == "127.0.0.1"
+///     })
+///     .build()?;
+/// # Ok::<(), librist::Error>(())
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PeerInfo {
+    /// Locally-generated peer identifier (auto-incrementing counter).
+    ///
+    /// This ID is assigned by librist when a peer connects and is unique within
+    /// the context's lifetime. It's useful for correlating connect/disconnect
+    /// events but should not be used for authentication.
+    pub id: u32,
+
+    /// RTCP Canonical Name (SDES CNAME) of the peer, if available.
+    ///
+    /// This is a user-configurable string set via the `cname=` URL parameter
+    /// on the sender side. It can be used for peer identification but should
+    /// not be trusted for security purposes as it can be freely set.
+    pub cname: Option<String>,
+}
+
+impl PeerInfo {
+    /// Creates a new `PeerInfo` with the given ID and no CNAME.
+    pub fn new(id: u32) -> Self {
+        Self { id, cname: None }
+    }
+
+    /// Creates a new `PeerInfo` with the given ID and CNAME.
+    pub fn with_cname(id: u32, cname: impl Into<String>) -> Self {
+        Self {
+            id,
+            cname: Some(cname.into()),
+        }
+    }
+
+    /// Extracts peer information from a raw librist peer pointer.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that `peer` is either null or points to a valid
+    /// `rist_peer` structure that remains valid for the duration of this call.
+    pub(crate) unsafe fn from_raw(peer: *const librist_sys::rist_peer) -> Self {
+        if peer.is_null() {
+            return Self { id: 0, cname: None };
+        }
+
+        let id = unsafe { librist_sys::rist_peer_get_id(peer) };
+
+        let cname = unsafe {
+            let mut cname_ptr: *const std::os::raw::c_char = std::ptr::null();
+            let len = librist_sys::rist_peer_get_cname(peer, &mut cname_ptr);
+            if len > 0 && !cname_ptr.is_null() {
+                std::ffi::CStr::from_ptr(cname_ptr)
+                    .to_str()
+                    .ok()
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_owned())
+            } else {
+                None
+            }
+        };
+
+        Self { id, cname }
+    }
+}
+
+impl Default for PeerInfo {
+    fn default() -> Self {
+        Self { id: 0, cname: None }
+    }
+}
+
+impl std::fmt::Display for PeerInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.cname {
+            Some(cname) => write!(f, "Peer(id={}, cname={})", self.id, cname),
+            None => write!(f, "Peer(id={})", self.id),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -302,5 +428,42 @@ mod tests {
         assert!(ConnectionStatus::TimedOut.is_disconnected());
         assert!(ConnectionStatus::ClientTimedOut.is_disconnected());
         assert!(!ConnectionStatus::Established.is_disconnected());
+    }
+
+    #[test]
+    fn test_peer_info_new() {
+        let peer = PeerInfo::new(42);
+        assert_eq!(peer.id, 42);
+        assert_eq!(peer.cname, None);
+    }
+
+    #[test]
+    fn test_peer_info_with_cname() {
+        let peer = PeerInfo::with_cname(123, "my-sender");
+        assert_eq!(peer.id, 123);
+        assert_eq!(peer.cname, Some("my-sender".to_string()));
+    }
+
+    #[test]
+    fn test_peer_info_default() {
+        let peer = PeerInfo::default();
+        assert_eq!(peer.id, 0);
+        assert_eq!(peer.cname, None);
+    }
+
+    #[test]
+    fn test_peer_info_display() {
+        let peer1 = PeerInfo::new(42);
+        assert_eq!(format!("{}", peer1), "Peer(id=42)");
+
+        let peer2 = PeerInfo::with_cname(123, "test");
+        assert_eq!(format!("{}", peer2), "Peer(id=123, cname=test)");
+    }
+
+    #[test]
+    fn test_peer_info_from_null() {
+        let peer = unsafe { PeerInfo::from_raw(std::ptr::null()) };
+        assert_eq!(peer.id, 0);
+        assert_eq!(peer.cname, None);
     }
 }
