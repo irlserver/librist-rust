@@ -333,7 +333,7 @@ pub const DEFAULT_KEEPALIVE_INTERVAL: u32 = librist_sys::RIST_DEFAULT_KEEPALIVE_
 ///     .build()?;
 /// # Ok::<(), librist::Error>(())
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct PeerInfo {
     /// Locally-generated peer identifier (auto-incrementing counter).
     ///
@@ -392,12 +392,6 @@ impl PeerInfo {
         };
 
         Self { id, cname }
-    }
-}
-
-impl Default for PeerInfo {
-    fn default() -> Self {
-        Self { id: 0, cname: None }
     }
 }
 
