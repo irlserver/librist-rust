@@ -102,6 +102,7 @@ mod peer;
 mod receiver;
 mod sender;
 mod stats;
+mod tunnel;
 mod types;
 
 #[cfg(feature = "async-tokio")]
@@ -119,6 +120,7 @@ pub use peer::{PeerConfig, PeerHandle};
 pub use receiver::{ReceiverBuilder, RistReceiver};
 pub use sender::{RistSender, SenderBuilder};
 pub use stats::{ReceiverPeerStats, ReceiverStats, SenderStats};
+pub use tunnel::{DataFdFlags, DataFdStats, Tun};
 pub use types::*;
 
 #[cfg(feature = "srp")]

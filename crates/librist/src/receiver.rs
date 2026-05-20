@@ -12,6 +12,7 @@ use crate::logging::{LogLevel, LoggingSettings};
 use crate::oob::OobBlock;
 use crate::peer::{PeerConfig, PeerHandle};
 use crate::stats::ReceiverStats;
+use crate::tunnel::{DataFdFlags, DataFdStats};
 use crate::types::{ConnectionStatus, NackType, PeerInfo, Profile};
 use parking_lot::Mutex;
 use std::os::raw::{c_int, c_void};
@@ -252,10 +253,36 @@ impl RistReceiver {
     ///
     /// `multiplier` must be >= 1.
     pub fn set_recovery_rtt_multiplier(&self, multiplier: i32) -> Result<()> {
-        let ret = unsafe {
-            librist_sys::rist_recovery_rtt_multiplier_set(self.ctx.as_ptr(), multiplier)
-        };
+        let ret =
+            unsafe { librist_sys::rist_recovery_rtt_multiplier_set(self.ctx.as_ptr(), multiplier) };
         check_result(ret)
+    }
+
+    /// Sets a file descriptor as the data sink for this receiver.
+    ///
+    /// Received RIST data is written directly to `fd` (a TUN device, pipe,
+    /// socket, etc.) from librist's output thread, bypassing the FIFO queue and
+    /// any data callback. This is the lowest-latency output path. Set
+    /// [`DataFdFlags::TUN`] when `fd` is a [`Tun`](crate::Tun) device so
+    /// platform-specific framing is handled.
+    ///
+    /// Must be called before [`start`](Self::start). The fd is not owned by
+    /// librist: keep it open until the receiver is dropped.
+    pub fn set_data_fd(&self, fd: i32, flags: DataFdFlags) -> Result<()> {
+        if self.started.load(Ordering::Acquire) {
+            return Err(Error::AlreadyStarted);
+        }
+        let ret =
+            unsafe { librist_sys::rist_receiver_data_fd_set(self.ctx.as_ptr(), fd, flags.bits()) };
+        check_result(ret)
+    }
+
+    /// Returns cumulative I/O counters for the data fd path.
+    pub fn data_fd_stats(&self) -> Result<DataFdStats> {
+        let mut raw = librist_sys::rist_data_fd_stats::default();
+        let ret = unsafe { librist_sys::rist_data_fd_stats_get(self.ctx.as_ptr(), &mut raw) };
+        check_result(ret)?;
+        Ok(DataFdStats::from_raw(&raw))
     }
 
     /// Returns the number of connected peers.

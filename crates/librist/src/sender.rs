@@ -10,6 +10,7 @@ use crate::logging::{LogLevel, LoggingSettings};
 use crate::oob::OobBlock;
 use crate::peer::{PeerConfig, PeerHandle};
 use crate::stats::SenderStats;
+use crate::tunnel::{DataFdFlags, DataFdStats};
 use crate::types::*;
 use parking_lot::Mutex;
 use std::os::raw::{c_int, c_void};
@@ -314,6 +315,40 @@ impl RistSender {
     /// Returns the number of connected peers.
     pub fn peer_count(&self) -> usize {
         self.peers.lock().len()
+    }
+
+    /// Sets a file descriptor as the data source for this sender.
+    ///
+    /// librist spawns an internal thread that reads framed packets from `fd`
+    /// (a TUN device, pipe, socket, etc.) and feeds them into the sender,
+    /// replacing explicit [`send`](Self::send) calls. `max_packet_size` caps
+    /// the bytes read per packet (e.g. 1500 for a TUN MTU). Set
+    /// [`DataFdFlags::TUN`] when `fd` is a [`Tun`](crate::Tun) device so
+    /// platform-specific framing is handled.
+    ///
+    /// Must be called before [`start`](Self::start). The fd is not owned by
+    /// librist: keep it open until the sender is dropped.
+    pub fn set_data_fd(&self, fd: i32, max_packet_size: usize, flags: DataFdFlags) -> Result<()> {
+        if self.started.load(Ordering::Acquire) {
+            return Err(Error::AlreadyStarted);
+        }
+        let ret = unsafe {
+            librist_sys::rist_sender_data_fd_set(
+                self.ctx.as_ptr(),
+                fd,
+                max_packet_size,
+                flags.bits(),
+            )
+        };
+        check_result(ret)
+    }
+
+    /// Returns cumulative I/O counters for the data fd path.
+    pub fn data_fd_stats(&self) -> Result<DataFdStats> {
+        let mut raw = librist_sys::rist_data_fd_stats::default();
+        let ret = unsafe { librist_sys::rist_data_fd_stats_get(self.ctx.as_ptr(), &mut raw) };
+        check_result(ret)?;
+        Ok(DataFdStats::from_raw(&raw))
     }
 
     /// Returns raw context pointer (for advanced use).
