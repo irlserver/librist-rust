@@ -242,6 +242,22 @@ impl RistReceiver {
         check_result(ret)
     }
 
+    /// Sets the recovery buffer RTT multiplier.
+    ///
+    /// Controls how aggressively the auto-scaling buffer grows relative to the
+    /// measured RTT (`buffer = multiplier * smoothed_rtt + reorder_buffer`).
+    /// Defaults to 7 per the RIST spec; lower values (2-3) suit low-latency LAN
+    /// scenarios. Only effective when auto-scaling is enabled, i.e. the buffer's
+    /// min and max recovery lengths differ. May be called before or after start.
+    ///
+    /// `multiplier` must be >= 1.
+    pub fn set_recovery_rtt_multiplier(&self, multiplier: i32) -> Result<()> {
+        let ret = unsafe {
+            librist_sys::rist_recovery_rtt_multiplier_set(self.ctx.as_ptr(), multiplier)
+        };
+        check_result(ret)
+    }
+
     /// Returns the number of connected peers.
     pub fn peer_count(&self) -> usize {
         self.peers.lock().len()

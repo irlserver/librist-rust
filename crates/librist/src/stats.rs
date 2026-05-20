@@ -157,6 +157,8 @@ pub struct ReceiverStats {
     pub max_inter_packet_spacing_ns: u64,
     /// Current round-trip time in milliseconds.
     pub rtt_ms: u32,
+    /// Average receiver buffer fill level in microseconds (dynamic buffer depth).
+    pub avg_buffer_time_us: u64,
     /// Per-peer statistics.
     pub peers: Vec<ReceiverPeerStats>,
 }
@@ -203,6 +205,7 @@ impl ReceiverStats {
             cur_inter_packet_spacing_ns: raw.cur_inter_packet_spacing,
             max_inter_packet_spacing_ns: raw.max_inter_packet_spacing,
             rtt_ms: raw.rtt,
+            avg_buffer_time_us: raw.avg_buffer_time,
             peers,
         }
     }
@@ -329,6 +332,7 @@ mod tests {
             cur_inter_packet_spacing_ns: 1500,
             max_inter_packet_spacing_ns: 2000,
             rtt_ms: 50,
+            avg_buffer_time_us: 0,
             peers: vec![],
         };
 
