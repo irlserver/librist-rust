@@ -108,13 +108,18 @@ fn main() -> librist::Result<()> {
                 peer_id, status
             );
         })
-        .on_auth_connect(|conn_ip, conn_port, _local_ip, _local_port, peer: &PeerInfo| {
-            println!(">>> New connection from {}:{} ({})", conn_ip, conn_port, peer);
-            if let Some(ref cname) = peer.cname {
-                println!("    CNAME: {}", cname);
-            }
-            true // Accept all connections
-        })
+        .on_auth_connect(
+            |conn_ip, conn_port, _local_ip, _local_port, peer: &PeerInfo| {
+                println!(
+                    ">>> New connection from {}:{} ({})",
+                    conn_ip, conn_port, peer
+                );
+                if let Some(ref cname) = peer.cname {
+                    println!("    CNAME: {}", cname);
+                }
+                true // Accept all connections
+            },
+        )
         .on_auth_disconnect(|peer: &PeerInfo| {
             println!(">>> {} disconnected", peer);
         })

@@ -603,7 +603,7 @@ rusty_fork_test! {
     fn test_oob_send_receive() {
         // Use unique port for this test
         let port = get_test_port();
-        
+
         // Track OOB reception
         let oob_received = Arc::new(AtomicBool::new(false));
         let oob_clone = oob_received.clone();
@@ -692,7 +692,7 @@ rusty_fork_test! {
         let mut test_oob = Vec::with_capacity(padding.len() + payload.len());
         test_oob.extend_from_slice(&padding);
         test_oob.extend_from_slice(payload);
-        
+
         let oob_ok = wait_for(
             || {
                 match sender.send_oob(&test_oob) {

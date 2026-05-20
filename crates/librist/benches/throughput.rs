@@ -7,10 +7,10 @@
 //! connection handshakes to ensure proper connection establishment, and lazy
 //! initialization to avoid creating contexts until they're actually needed.
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use librist::{ConnectionStatus, LogLevel, Profile, RistReceiver, RistSender};
-use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU16, Ordering};
 use std::time::{Duration, Instant};
 
 /// Port offset within this benchmark run
@@ -215,8 +215,6 @@ fn bench_context_lifecycle(c: &mut Criterion) {
 
     group.finish();
 }
-
-
 
 /// Benchmark DataBlockBuilder
 fn bench_datablock(c: &mut Criterion) {
